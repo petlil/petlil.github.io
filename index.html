@@ -1,21 +1,57 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Peter Liley Code Art Portfolio</title>
+	<meta charset="UTF-8">
+    <meta name="viewport" content="width-device-width, initial-scale=1.0">
+	<title>Peter Liley</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <table cellspacing="20">
-        <tr>
-            <td><img height=150 src="https://i.scdn.co/image/ab6761610000e5eb5614db0bf8da07b53a80e6c0" alt="Peter Liley headshot with a bass saxophone"></td>
-            <td><h1>Peter Liley</h1>
-                <p>Musician, artist, <em>big</em> nerd.</p></td>
-        </tr>
-    </table>
-    
-    <hr size="3" noshade>
-    <ul>
-        <li><strong><a href="sdf/index.html">Signed Distance Functions</a></strong></li>
-    </ul>
+	<div id="header">
+        <div class="container">
+            <nav>
+                <img src="images/logo.png" class="logo">
+                <ul>
+                    <li><a href="#">Home</a></li>
+                    <li><a href="#">About</a></li>
+                    <li><a href="#">Music</a></li>
+                    <li><a href="#">Art</a></li>
+                    <li><a href="#">Contact</a></li>
+                </ul>
+            </nav>
+            <div class="header-text">
+                <!-- <p>Musician / Artist / Programmer</p> -->
+                <h1>Hi! I'm <span>Peter.</span> <br>I make cool and weird art.</h1>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== ABOUT ============= -->
+
+    <div id="about">
+        <div class="container">
+            <div class="row">
+                <div class="about-col-L">
+                    <img src="images/Headshotpg.jpg" alt="A headshot of Peter Liley">
+                </div>
+                <div class="about-col-R">
+                    <h2 class="subtitle">About</h2>
+                    <p>Peter studied composition and sound art at the New Zealand School of Music, though his musical taste and skill has never fit neatly into one box. He makes electroacoustic ambient music and sings in choirs and operas. He studied classical saxophone, and now plays mostly his own bizarre, sometimes meditative (often roaring) soundscape compositions on an old bass saxophone. He also composes for film and makes audio plugins and apps in his spare time.</p>
+                    <br>
+                    <br>
+                    <p><i>“I’m fascinated by generative artistic processes. I make the rules, randomly generate starting conditions, and let the computer make the art. I wonder who is the artist in this scenario? I’m hopeless with a paintbrush, so my visual artwork uses code to achieve granular, repeating or gestural visual patterns, yet these often end up looking pleasing, organic and intentional. I find something so delightful in embracing our very human tendency to discern intention in all phenomena, even when there is none.”</i></p>
+                    
+                    <div class="tab-titles">
+                        <p class="tab-links active-link">Music</p>
+                        <p class="tab-links">Performances</p>
+                        <p class="tab-links">Visual Art</p>
+                    </div>
+                    <div class="tab-contents">
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
