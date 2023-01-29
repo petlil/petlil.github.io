@@ -69,7 +69,7 @@ nav ul li a:hover::after{
 
 .header-text h1{
     font-size: 50px;
-    margin-top: 20%;
+    margin-top: 25%;
 }
 
 .header-text h1 span{
@@ -79,7 +79,8 @@ nav ul li a:hover::after{
 /* ============ ABOUT =========== */
 
 #about{
-    padding: 80px, 0;
+    padding: 80px;
+    top: 30px;
     color: #ababab;
 }
 
@@ -128,10 +129,35 @@ nav ul li a:hover::after{
     background: rgb(220, 20, 60);
     position: absolute;
     left: 0;
-    bottom :-8px;
+    bottom :8px;
     transition: 0.5s;
 }
 
 .tab-links.active-link::after{
     width: 50%;
 }
+
+.drag-container{
+    height: 100vh;
+    width: 100vw;
+    background-color: black;
+    margin: 0rem;
+    overflow: hidden;
+}
+
+#image-track {
+    display: flex;
+    gap: 4vmin;
+    position: relative;
+    left: 20%;
+    top: 50%;
+    transform: translate(0%, -50%); 
+    user-select: none; /* -- Prevent image highlighting -- */
+  }
+
+#image-track > .image {
+    width: 40vmin;
+    height: 56vmin;
+    object-fit: cover;
+    object-position: 100% center;
+  }
