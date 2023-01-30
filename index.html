@@ -11,12 +11,14 @@
         <div class="container">
             <nav>
                 <img src="images/logo.png" class="logo">
-                <ul>
+                <ul id="sidemenu">
                     <li><a href="#">Home</a></li>
                     <li><a href="#">About</a></li>
                     <li><a href="#">Work</a></li>
                     <li><a href="#">Contact</a></li>
+                    <i class="fa-sharp fa-solid fa-xmark" onclick="closeMenu()"></i>
                 </ul>
+                <i class="fa-sharp fa-solid fa-bars" onclick="openMenu()"></i>
             </nav>
             <div class="header-text">
                 <!-- <p>Musician / Artist / Programmer</p> -->
@@ -123,5 +125,15 @@
 </div>
 
 <script type="text/javascript" src="drag.js"></script>
+
+<script>
+    let sidemenu = document.getElementById("sidemenu");
+    function openMenu() {
+        sidemenu.style.right = "0";
+    }
+    function closeMenu() {
+        sidemenu.style.right = "-150px"
+    }
+</script>
 </body>
 </html>
