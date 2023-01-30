@@ -141,6 +141,7 @@ nav ul li a:hover::after{
 
 #work{
     padding: 30px 0;
+    margin-bottom: 10%;
 }
 
 .work-list{
@@ -191,7 +192,82 @@ nav ul li a:hover::after{
 .contact-left p{
     margin-top: 10%;
 }
+.contact-left p i {
+    color: crimson;
+    margin-right: 5%;
+}
 
+.social-icons{
+    margin-top: 10%;
+}
+
+.social-icons a{
+    text-decoration: none;
+    font-size: 30px;
+    margin-right: 5%;
+    color: crimson;
+    display: inline-block;
+    transition: 0.2s;
+}
+
+.social-icons a:hover{
+    color: #fff;
+    transform: translateY(-10%);
+}
+
+.btn {
+    cursor: pointer;
+    background-color: crimson;
+    color: #fff;
+    padding: 3%;
+    padding-right: 5%;
+    padding-left: 5%;
+    border-radius: 5px;
+    border: none;
+    transition: 0.2s;
+}
+
+.btn:hover{
+    background-color: darkred;
+}
+
+.contact-right form{
+    width: 100%;
+}
+
+form input, form textarea{
+    width: 100%;
+    border: 0;
+    outline: none;
+    background: #262626;
+    padding: 3%;
+    margin: 3%;
+    color: #fff;
+    font-size: 18px;
+    border-radius: 5px;
+    resize: none;
+}
+
+form .btn{
+    padding: 50%, 100%;
+    font-size: 18px;
+    margin-top: 20px;
+    margin-left: 3%;
+}
+
+.copyright{
+    font-size: small;
+    width: 100%;
+    text-align: center;
+    padding: 2%;
+    background-color: #262626;
+    margin-top: 5%;
+}
+
+.copyright a{
+    color: crimson;
+    text-decoration: underline;
+}
 
 /* ======== DRAG BAR ========= */
 
