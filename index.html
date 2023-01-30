@@ -36,6 +36,7 @@
                 </div>
                 <div class="about-col-R">
                     <h2 class="subtitle">About</h2>
+                    <br>
                     <p>Peter is a musician and visual artist based in Wellington, New Zealand. He studied composition and sound art at the New Zealand School of Music, followed by computer science at Victoria University of Wellington. His multi-faceted artworks explore the worlds of sound art, visual art, and code.
                     <br>
                     <br>
@@ -45,9 +46,10 @@
         </div>
     </div>
 
-    <!-- ============ ARTWORK =============== -->
+<!-- ============ ARTWORK =============== -->
 
-    <div id="artwork">
+
+    <!-- <div id="artwork">
         <div class="drag-container">
             <div id="image-track" data-mouse-down-at="0" data-prev-percentage="0">
                 <img class="image" src="images/kingi_cover.png" draggable="false">
@@ -61,30 +63,57 @@
                 <img class="image" src="images/poem.png" draggable="false">
             </div>
         </div>
-    </div>
-</body>
+    </div> -->
+
 
 <!-- ================= WORK ==================== -->
 
+<div id="work">
+    <div class="container">
+        <!-- <h2 class="subtitle">Work</h2> -->
+        <div class="work-list">
+            <div onclick="location.href='#';" style="cursor:pointer; background-image: url('images/cover_rattle.jpeg')">
+                <h3>Composition</h3>
+            </div>
+            
+            <div onclick="location.href='#';" style="cursor:pointer; background-image: url('images/Pyramid-Performance.png')">
+                <h3>Performances</h3>
+            </div>
+            <div onclick="location.href='#';" style="cursor:pointer; background-image: url('images/art_deco.gif')">
+                <h3>Artwork</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- =============== CONTACT ==================== -->
+
+<script src="https://kit.fontawesome.com/3e56f55113.js" crossorigin="anonymous"></script>
+
 
 <div id="contact">
     <div class="container">
         <div class="row">
             <div class="contact-left">
                 <h2 class="subtitle">Contact me:</h2>
-                <p>peterandrewliley@gmail.com</p>
+                <p><i class="fa-solid fa-paper-plane"></i> peterandrewliley@gmail.com</p>
                 <div class="social-icons">
-                    <a href="https://www.instagram.com/peterlileymusic/"><i class="fab fa-instagram"></i></a>
+                    <a href="https://www.instagram.com/peterlileymusic/"><i class="fa-brands fa-instagram"></i></a>
                     <a href="https://twitter.com/LileyPeter"><i class="fa-brands fa-twitter"></i></a>
                 </div>
-            </div>
+            </div> 
             <div class="contact-right">
-
+                <form action="">
+                    <input type="text" name="Name" placeholder="name" required>
+                    <input type="email" name="email" placeholder="email@address.com">
+                    <textarea name="Message" rows="6" placeholder="message"></textarea>
+                    <button type="submit">Submit</button>
+                </form>
             </div>
         </div>
     </div>
 </div>
 
 <script type="text/javascript" src="drag.js"></script>
+</body>
 </html>

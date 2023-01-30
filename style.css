@@ -137,6 +137,62 @@ nav ul li a:hover::after{
     width: 50%;
 }
 
+/* ========= WORK ============ */
+
+#work{
+    padding: 30px 0;
+}
+
+.work-list{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(25%, 1fr));
+    grid-gap: 5%;
+    margin-top: 5%;
+}
+
+.work-list div{
+    background-color: #262626;
+    background-size: cover;
+    background-position: center;
+    /* padding: 40px; */
+    padding-top: 120%;
+    padding-bottom: 60%;
+    border-radius: 20px;
+}
+
+.work-list h3{
+    color: #fff;
+    font-size: 150%;
+    text-align: center;
+    text-decoration: none;
+    padding: 2%;
+    background-color: #000;
+    transition: 0.5s;
+}
+
+.work-list div:hover > h3{
+    background-color: crimson;
+    transform: translateY(-20%);
+    width: 100%;
+    left: 0%;
+}
+
+
+/* ========== CONTACT ============== */
+
+.contact-left{
+    flex-basis: 35%;
+}
+
+.contact-right{
+    flex-basis: 60%;
+}
+
+.contact-left p{
+    margin-top: 10%;
+}
+
+
 /* ======== DRAG BAR ========= */
 
 .drag-container{
