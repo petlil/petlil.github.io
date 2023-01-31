@@ -48,6 +48,11 @@ nav i{
     max-width: 100%;
     min-width: 100%;
     padding: 2%;
+    transition: padding 0.5s;
+}
+
+.gallery img:hover{
+    padding: 1%;
 }
 
 

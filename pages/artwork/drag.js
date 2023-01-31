@@ -31,7 +31,7 @@ const handleOnMove = e => {
   var index = 0;
   for(const image of track.getElementsByClassName("image")) {
     image.animate({
-      objectPosition: `${100 + nextPercentage + index*5}% center`
+      objectPosition: `${100 + nextPercentage}% center`
     }, { duration: 1200, fill: "forwards" });
     index++;
   }

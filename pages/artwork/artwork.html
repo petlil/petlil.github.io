@@ -6,7 +6,6 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
 	<div id="header">
         <div class="container">
             <nav>
@@ -33,6 +32,7 @@
 				<img class="image" src="../../images/tesselation.png" draggable="false">
 				<img class="image" src="../../images/sineLines. (6).png" draggable="false">
                 <img class="image" src="../../images/sdf_out_2.png" draggable="false">
+				<img class="image" src="../../images/5_wandering_joiners.gif" draggable="false">
 			</div>
 			<div class="gallery-col">
 				<img class="image" src="../../images/poem.png" draggable="false">
@@ -47,21 +47,17 @@
 	<div class="drag-container kingi">
 		<i class="fa-sharp fa-solid fa-xmark" onclick="closeDragContainer('div.drag-container.kingi')"></i>
 		<div id="image-track" data-mouse-down-at="0" data-prev-percentage="0">
-			<img class="image" src="../../images/kingi_cover.png" draggable="false">
-			<img class="image" src="../../images/kingi_cover.png" draggable="false">
-			<img class="image" src="../../images/kingi_cover.png" draggable="false">
-			<img class="image" src="../../images/kingi_cover.png" draggable="false">
-			<img class="image" src="../../images/kingi_cover.png" draggable="false">
+			<img class="image" src="../../images/kingi/kingi_1.png" draggable="false">
+			<img class="image" src="../../images/kingi/kingi_2.png" draggable="false">
+			<img class="image" src="../../images/kingi/kingi_3.png" draggable="false">
+			<img class="image" src="../../images/kingi/kingi_4.png" draggable="false">
+			<img class="image" src="../../images/kingi/kingi_5.png" draggable="false">
 		</div>
 	</div>
-
-	<script type="text/javascript" src="drag.js"></script>
 
 	<script>
 		function openDragContainer(containerID) {
 			let dragContainer = document.querySelector(containerID);
-			
-			console.log(dragContainer);
 			dragContainer.style.display = "unset";
 		}
 		function closeDragContainer(containerID) {
@@ -69,6 +65,8 @@
 			dragContainer.style.display = "none";
 		}
 	</script>
+
+	<script type="text/javascript" src="drag.js"></script>
 
 	<div class="copyright">
 		<p>Copyright <i class="fa-regular fa-copyright"></i> Peter Liley 2023</p>
