@@ -11,7 +11,7 @@ const handleOnUp = () => {
 }
 
 const handleOnMove = e => {
-
+  if(track.dataset.prevPercentage == undefined || track.dataset.prevPercentage == NaN) track.dataset.prevPercentage = "0"; track.dataset.percentage = "0";
   if(track.dataset.mouseDownAt === "0") return;
   
   const mouseDelta = parseFloat(track.dataset.mouseDownAt) - e.clientX,
