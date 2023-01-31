@@ -11,7 +11,7 @@ const handleOnUp = () => {
 }
 
 const handleOnMove = e => {
-  if(track.dataset.prevPercentage == undefined || track.dataset.prevPercentage == NaN) track.dataset.prevPercentage = "0"; track.dataset.percentage = "0";
+
   if(track.dataset.mouseDownAt === "0") return;
   
   const mouseDelta = parseFloat(track.dataset.mouseDownAt) - e.clientX,
@@ -31,7 +31,7 @@ const handleOnMove = e => {
   var index = 0;
   for(const image of track.getElementsByClassName("image")) {
     image.animate({
-      objectPosition: `${100 + nextPercentage}% center`
+      objectPosition: `${100 + nextPercentage + index*5}% center`
     }, { duration: 1200, fill: "forwards" });
     index++;
   }
