@@ -55,6 +55,7 @@ nav i{
     min-width: 100%;
     padding: 2%;
     transition: padding 0.5s;
+    cursor: pointer;
 }
 
 .gallery img:hover{

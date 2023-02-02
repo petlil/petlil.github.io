@@ -41,3 +41,58 @@ nav i{
 .logo{
     width: 300px;
 }
+
+
+/* ====== PERFORMANCES ========== */
+
+.video_with_description{
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    padding: 50px 10%;
+
+    background-position: left; 
+    background-size: cover;
+    background-repeat: no-repeat;
+}
+
+.video_with_description h2{
+    font-size: 40px;
+}
+
+.video{
+    flex-basis: 55%;
+}
+
+.video iframe{
+    width: 100%;
+    border-radius: 20px;
+}
+
+.description{
+    margin-top: 50px;
+    flex-basis: 40%;
+    font-size: 18px;
+}
+
+/* =========== FOOTER ============= */
+
+.copyright{
+    font-size: small;
+    width: 100%;
+    text-align: center;
+    padding: 2%;
+    background-color: #262626;
+    margin-top: 5%;
+}
+
+.copyright a{
+    color: crimson;
+    text-decoration: underline;
+}
+
+@media only screen and (max-width: 600px){
+    .video_left, .description_right{
+        flex-basis: 100%;
+    }
+}
