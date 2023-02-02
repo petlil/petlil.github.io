@@ -1,0 +1,150 @@
+*{
+    margin: 0;
+    padding: 0;
+    font-family: 'Poppins', sans-serif;
+    box-sizing: border-box;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+::-webkit-scrollbar {
+    display: none;
+  }
+
+body{
+    background: #080808;
+    color: #fff;
+}
+
+#header{
+    width: 100%;
+    height: 5%;
+    background-size: cover;
+    background-position: top;
+}
+
+nav{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+nav i{
+    color: #fff;
+    font-size: 30px;
+}
+
+.container{
+    padding: 10px 10%;
+}
+
+.logo{
+    width: 300px;
+}
+
+
+/* ======== GALLERY ======== */
+
+.gallery{
+    display: grid;
+    grid-template-columns: 33% 33% 33%;
+}
+
+.gallery img{
+    max-width: 100%;
+    min-width: 100%;
+    padding: 2%;
+    transition: padding 0.5s;
+}
+
+.gallery img:hover{
+    padding: 1%;
+}
+
+
+
+/* ======== DRAG BAR ========= */
+
+.drag-container{
+    backdrop-filter: blur(10px);
+    z-index: 10;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    height: 100vh;
+    width: 100vw;
+    margin: 0rem;
+    overflow: hidden;
+    display: unset;
+
+    transition: backdrop-filter 0.5s;
+}
+
+.drag-container .fa-sharp{
+    color: #fff;
+    position: absolute;
+    top: 25px;
+    left: 25px;
+    cursor: pointer;
+    font-size: 30px;
+}
+
+.drag-container.kingi{
+    display: none;
+}
+
+.drag-container.sine-lines{
+    display: none;
+}
+
+.drag-container.tesselation{
+    display: none;
+}
+
+.drag-container.poem{
+    display: none;
+}
+
+.drag-container.nebula{
+    display: none;
+}
+
+#small-gallery{
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 4vmin; 
+    position: relative; 
+    top: 25%;
+    justify-self: center;
+    overflow-x: scroll;
+    overflow-y: hidden;
+    padding-right: 10%;
+    padding-left: 10%;
+}
+
+#small-gallery > .image {
+    width: 100%; 
+    height: 56vmin; 
+    object-fit: cover; 
+    object-position: center;
+}
+
+
+
+/* =========== FOOTER ============= */
+
+.copyright{
+    font-size: small;
+    width: 100%;
+    text-align: center;
+    padding: 2%;
+    background-color: #262626;
+    margin-top: 5%;
+}
+
+.copyright a{
+    color: crimson;
+    text-decoration: underline;
+}

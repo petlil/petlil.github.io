@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8" />
+	<title>Peter Liley Artwork</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+	<div id="header">
+        <div class="container">
+            <nav>
+				<a href="../../index.html"><img src="../../images/logo.png" class="logo"></a>
+				<a href="../../index.html"><i class="fa-solid fa-arrow-left"></i></a>
+			</nav>
+        </div>
+    </div>
+
+	<script src="https://kit.fontawesome.com/3e56f55113.js" crossorigin="anonymous"></script>
+
+
+	<!-- ============ ARTWORK =============== -->
+
+
+    <div id="artwork">
+        <div class="gallery">
+            <div class="gallery-col">
+				<img class="image" src="../../images/sdf_out_1.png" draggable="false">
+                <img class="image" src="../../images/kingi_cover.png" draggable="false" onclick="openDragContainer('div.drag-container.kingi')">
+                <img class="image" src="../../images/network.png" draggable="false" onclick="openDragContainer('div.drag-container.nebula')">
+            </div>
+			<div class="gallery-col">
+				<img class="image" src="../../images/tesselation.png" draggable="false" onclick="openDragContainer('div.drag-container.tesselation')">
+				<img class="image" src="../../images/sineLines. (6).png" draggable="false" onclick="openDragContainer('div.drag-container.sine-lines')">
+                <img class="image" src="../../images/sdf_out_2.png" draggable="false">
+				<img class="image" src="../../images/5_wandering_joiners.gif" draggable="false">
+			</div>
+			<div class="gallery-col">
+				<img class="image" src="../../images/poem.png" draggable="false" onclick="openDragContainer('div.drag-container.poem')">
+				<img class="image" src="../../images/grid (2).gif" draggable="false">
+                <img class="image" src="../../images/art_deco.gif" draggable="false">
+			</div>
+        </div>
+    </div>
+
+	<div class="drag-container sine-lines">
+		<i class="fa-sharp fa-solid fa-xmark" onclick="closeDragContainer('div.drag-container.sine-lines')"></i>
+		<div id="small-gallery" data-mouse-down-at="0" data-prev-percentage="0">
+			<img class="image" src="../../images/sineLines/sineLines_1.jpg" draggable="false">
+			<img class="image" src="../../images/sineLines/sineLines_2.jpg" draggable="false">
+			<img class="image" src="../../images/sineLines/sineLines_3.png" draggable="false">
+			<img class="image" src="../../images/sineLines/sineLines_4.jpg" draggable="false">
+			<img class="image" src="../../images/sineLines/sineLines_5.png" draggable="false">
+			<img class="image" src="../../images/sineLines/sineLines_6.png" draggable="false">
+		</div>
+	</div>
+	
+	<div class="drag-container kingi">
+		<i class="fa-sharp fa-solid fa-xmark" onclick="closeDragContainer('div.drag-container.kingi')"></i>
+		<div id="small-gallery" data-mouse-down-at="0" data-prev-percentage="0">
+			<img class="image" src="../../images/kingi/kingi_1.png" draggable="false">
+			<img class="image" src="../../images/kingi/kingi_2.png" draggable="false">
+			<img class="image" src="../../images/kingi/kingi_10.png" draggable="false">
+			<img class="image" src="../../images/kingi/kingi_3.png" draggable="false">
+			<img class="image" src="../../images/kingi/kingi_4.png" draggable="false">
+			<img class="image" src="../../images/kingi/kingi_5.png" draggable="false">
+			<img class="image" src="../../images/kingi/kingi_6.png" draggable="false">
+			<img class="image" src="../../images/kingi/kingi_11.png" draggable="false">
+			<img class="image" src="../../images/kingi/kingi_7.png" draggable="false">
+			<img class="image" src="../../images/kingi/kingi_9.png" draggable="false">
+		</div>
+	</div>
+
+	<div class="drag-container tesselation">
+		<i class="fa-sharp fa-solid fa-xmark" onclick="closeDragContainer('div.drag-container.tesselation')"></i>
+		<div id="small-gallery" data-mouse-down-at="0" data-prev-percentage="0">
+			<img class="image" src="../../images/tesselation/tesselation_1.png" draggable="false">
+			<img class="image" src="../../images/tesselation/tesselation_2.png" draggable="false">
+			<img class="image" src="../../images/tesselation/tesselation_3.png" draggable="false">
+			<img class="image" src="../../images/tesselation/tesselation_4.png" draggable="false">
+		</div>
+	</div>
+
+	<div class="drag-container poem">
+		<i class="fa-sharp fa-solid fa-xmark" onclick="closeDragContainer('div.drag-container.poem')"></i>
+		<div id="small-gallery" data-mouse-down-at="0" data-prev-percentage="0">
+			<img class="image" src="../../images/poem/poem_1.png" draggable="false">
+			<img class="image" src="../../images/poem/poem_2.png" draggable="false">
+			<img class="image" src="../../images/poem/poem_3.png" draggable="false">
+			<img class="image" src="../../images/poem/poem_4.png" draggable="false">
+			<img class="image" src="../../images/poem/poem_5.png" draggable="false">
+		</div>
+	</div>
+
+	<div class="drag-container nebula">
+		<i class="fa-sharp fa-solid fa-xmark" onclick="closeDragContainer('div.drag-container.nebula')"></i>
+		<div id="small-gallery" data-mouse-down-at="0" data-prev-percentage="0">
+			<img class="image" src="../../images/nebula/nebula_1.jpg" draggable="false">
+			<img class="image" src="../../images/nebula/nebula_2.jpg" draggable="false">
+			<img class="image" src="../../images/nebula/nebula_3.jpg" draggable="false">
+			<img class="image" src="../../images/nebula/nebula_4.jpg" draggable="false">
+			<img class="image" src="../../images/nebula/nebula_5.jpg" draggable="false">
+			<img class="image" src="../../images/nebula/nebula_6.jpg" draggable="false">
+
+		</div>
+	</div>
+
+	<script>
+		function openDragContainer(containerID) {
+			let dragContainer = document.querySelector(containerID);
+			dragContainer.style.display = "unset";
+		}
+		function closeDragContainer(containerID) {
+			let dragContainer = document.querySelector(containerID);
+			dragContainer.style.display = "none";
+		}
+	</script>
+
+	<!-- <script type="text/javascript" src="drag.js"></script> -->
+
+	<div class="copyright">
+		<p>Copyright <i class="fa-regular fa-copyright"></i> Peter Liley 2023</p>
+		<br>
+		<p>Website created by me <i class="fa-solid fa-heart"></i> and hosted <a href="https://github.com/petlil/petlil.github.io">on GitHub</a></p>
+   </div>
+
+
+
+</body>
+</html>
