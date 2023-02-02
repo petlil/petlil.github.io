@@ -107,6 +107,10 @@ nav i{
     display: none;
 }
 
+.drag-container.nebula{
+    display: none;
+}
+
 #small-gallery{
     display: flex;
     flex-wrap: nowrap;

@@ -122,7 +122,7 @@ nav ul li a:hover::after{
 
 .work-list{
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(25%, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(21%, 1fr));
     grid-gap: 5%;
     margin-top: 5%;
 }
