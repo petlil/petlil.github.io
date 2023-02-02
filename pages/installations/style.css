@@ -42,95 +42,49 @@ nav i{
     width: 300px;
 }
 
-
-/* ======== GALLERY ======== */
-
-.gallery{
-    display: grid;
-    grid-template-columns: 33% 33% 33%;
-}
-
-.gallery img{
-    max-width: 100%;
-    min-width: 100%;
-    padding: 2%;
-    transition: padding 0.5s;
-}
-
-.gallery img:hover{
-    padding: 1%;
+#header h1{
+    color: crimson;
+    font-size: 50px;
+    margin-top: 5%;
+    margin-left: 10%;
+    margin-bottom: 5%;
 }
 
 
+/* =========== INSTALLATIONS ============ */
 
-/* ======== DRAG BAR ========= */
-
-.drag-container{
-    backdrop-filter: blur(10px);
-    z-index: 10;
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 0;
-    height: 100vh;
-    width: 100vw;
-    margin: 0rem;
-    overflow: hidden;
-    display: unset;
-
-    transition: backdrop-filter 0.5s;
+.installation_container{
 }
 
-.drag-container .fa-sharp{
-    color: #fff;
-    position: absolute;
-    top: 25px;
-    left: 25px;
-    cursor: pointer;
-    font-size: 30px;
-}
-
-.drag-container.kingi{
-    display: none;
-}
-
-.drag-container.sine-lines{
-    display: none;
-}
-
-.drag-container.tesselation{
-    display: none;
-}
-
-.drag-container.poem{
-    display: none;
-}
-
-.drag-container.nebula{
-    display: none;
-}
-
-#small-gallery{
+.video_with_description{
     display: flex;
-    flex-wrap: nowrap;
-    gap: 4vmin; 
-    position: relative; 
-    top: 25%;
-    justify-self: center;
-    overflow-x: scroll;
-    overflow-y: hidden;
-    padding-right: 10%;
-    padding-left: 10%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    padding: 50px 10%;
+
+    background-position: left; 
+    background-size: cover;
+    background-repeat: no-repeat;
 }
 
-#small-gallery > .image {
-    width: 100%; 
-    height: 56vmin; 
-    object-fit: cover; 
-    object-position: center;
+.video_with_description h2{
+    font-size: 40px;
 }
 
+.video_left{
+    flex-basis: 55%;
+}
+
+.video_left iframe{
+    width: 100%;
+    border-radius: 20px;
+}
+
+.description_right{
+    margin-top: 50px;
+    flex-basis: 40%;
+    font-size: 18px;
+}
 
 
 /* =========== FOOTER ============= */
@@ -147,4 +101,10 @@ nav i{
 .copyright a{
     color: crimson;
     text-decoration: underline;
+}
+
+@media only screen and (max-width: 600px){
+    .video_left, .description_right{
+        flex-basis: 100%;
+    }
 }
