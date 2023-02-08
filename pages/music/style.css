@@ -42,36 +42,11 @@ nav i{
     width: 300px;
 }
 
-.featured-track {
-    align-items: center;
-}
-
-.featured-track{
-    display: flex;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    padding: 50px 10%;
-
-    background-position: left; 
-    background-size: cover;
-    background-repeat: no-repeat;
-}
-
-.track{
-    flex-basis: 65%;
-}
-
-.featured-description{
-    color: #080808;
-    margin-top: 0;
-    flex-basis: 30%;
-    font-size: 18px;
-}
 
 
 /* ====== MUSIC ========== */
 
-.video_with_description{
+.player_with_description{
     display: flex;
     justify-content: space-between;
     flex-wrap: wrap;
@@ -82,19 +57,22 @@ nav i{
     background-repeat: no-repeat;
 }
 
-.video{
+.player{
     flex-basis: 55%;
 }
 
-.video iframe{
+.player iframe{
     width: 100%;
     border-radius: 20px;
+    margin-top: 50px;
+    margin-bottom: 50px;
 }
 
 .description{
     margin-top: 50px;
     flex-basis: 40%;
     font-size: 18px;
+    margin-bottom: 50px;
 }
 
 .description a{
@@ -119,7 +97,7 @@ nav i{
 }
 
 @media only screen and (max-width: 600px){
-    .video_left, .description_right{
+    .player_left, .description_right{
         flex-basis: 100%;
     }
 }
