@@ -4,8 +4,39 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Peter Liljenström</title>
+
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components/nav.css">
+  <link rel="stylesheet" href="css/components/modal.css">
+  <link rel="stylesheet" href="css/components/debug.css">
+  <link rel="stylesheet" href="css/components/audio-player.css">
+
+  <!-- p5.js — must load before app.js; instance mode used throughout -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
 </head>
 <body>
 
+  <!-- Full-screen background canvas — sits behind everything via z-index -->
+  <div id="bg" aria-hidden="true"></div>
+
+  <!-- FFT visualiser — transparent canvas overlay, pointer-events: none -->
+  <div id="visualiser" aria-hidden="true"></div>
+
+  <!-- Audio player pill -->
+  <div id="player"></div>
+
+  <nav id="nav"></nav>
+
+  <main id="app">
+    <section id="section-music"  class="section" data-slug="music"></section>
+    <section id="section-art"    class="section" data-slug="art"></section>
+    <section id="section-education" class="section" data-slug="education"></section>
+    <section id="section-projects"  class="section" data-slug="projects"></section>
+  </main>
+
+  <div id="modal" aria-hidden="true"></div>
+
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>

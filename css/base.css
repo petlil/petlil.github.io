@@ -1,0 +1,82 @@
+/* ============================================================
+   BASE.CSS — resets, design tokens, typography
+   Keep colour values in sync with js/core/theme.js
+   ============================================================ */
+
+/* --- Custom Properties (design tokens) --- */
+:root {
+  /* Colours */
+  --color-bg:        #cabebe;                   /* warm dusty grey   — theme.bg     */
+  --color-fg:        #281e1e;                   /* dark warm         — theme.fg     */
+  --color-accent:    #a51e1e;                   /* deep red          — theme.accent */
+  --color-muted:     #8c7878;                   /* muted warm grey   — theme.muted  */
+  --color-surface:   rgba(202, 190, 190, 0.85); /* semi-transparent surface         */
+  --color-border:    rgba(165, 30, 30, 0.15);   /* subtle accent border             */
+
+  /* Typography */
+  --font-sans:       system-ui, sans-serif;
+  --font-mono:       ui-monospace, monospace;
+  --font-size-base:  1rem;
+  --line-height:     1.6;
+
+  /* Spacing scale */
+  --space-1:  0.25rem;
+  --space-2:  0.5rem;
+  --space-3:  0.75rem;
+  --space-4:  1rem;
+  --space-6:  1.5rem;
+  --space-8:  2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-24: 6rem;
+
+  /* Motion */
+  --duration-fast:   150ms;
+  --duration-normal: 300ms;
+  --duration-slow:   600ms;
+  --ease:            cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* --- Reset --- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height);
+  background-color: var(--color-bg);
+  color: var(--color-fg);
+}
+
+img, video {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  all: unset;
+  cursor: pointer;
+}
+
+ul, ol {
+  list-style: none;
+}

@@ -1,0 +1,15 @@
+/* ============================================================
+   MODAL.CSS — modal/overlay component
+   ============================================================ */
+
+/* Placeholder — styles added when Modal is designed */
+#modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+}
+
+#modal.is-open {
+  pointer-events: all;
+}
