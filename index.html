@@ -1,148 +1,119 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Peter Liley</title>
-  <meta name="description" content="Peter Liley — saxophonist, composer, and artist based in Pōneke Wellington, NZ.">
-
-  <!-- Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-  <!-- Styles -->
-  <link rel="stylesheet" href="css/main.css">
+	<meta charset="UTF-8">
+    <meta name="viewport" content="width-device-width, initial-scale=1.0">
+	<title>Peter Liley</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-  <!-- ── Content Overlays ────────────────────────────────────────────────── -->
-
-  <div id="overlay-music" class="overlay">
-    <div class="overlay-header">
-      <h1><span>M</span>usic</h1>
-      <button class="overlay-close" aria-label="Close music overlay">&#xd7;</button>
-    </div>
-    <div class="overlay-body"></div>
-  </div>
-
-  <div id="overlay-artwork" class="overlay">
-    <div class="overlay-header">
-      <h1><span>A</span>rtwork</h1>
-      <button class="overlay-close" aria-label="Close artwork overlay">&#xd7;</button>
-    </div>
-    <div class="overlay-body"></div>
-  </div>
-
-  <div id="overlay-performances" class="overlay">
-    <div class="overlay-header">
-      <h1><span>P</span>erformances</h1>
-      <button class="overlay-close" aria-label="Close performances overlay">&#xd7;</button>
-    </div>
-    <div class="overlay-body"></div>
-  </div>
-
-  <div id="overlay-installations" class="overlay">
-    <div class="overlay-header">
-      <h1><span>I</span>nstallations</h1>
-      <button class="overlay-close" aria-label="Close installations overlay">&#xd7;</button>
-    </div>
-    <div class="overlay-body"></div>
-  </div>
-
-  <!-- ── Artwork Lightbox ─────────────────────────────────────────────────── -->
-
-  <div id="lightbox" role="dialog" aria-label="Image viewer">
-    <div id="lightbox-title"></div>
-    <button id="lightbox-close" aria-label="Close image viewer">&#xd7;</button>
-    <div id="lightbox-strip"></div>
-  </div>
-
-  <!-- ── Audio Player ──────────────────────────────────────────────────────── -->
-
-  <div id="audio-player">
-
-    <div class="player-controls">
-      <button id="btn-prev"       title="Previous track"
-              onclick="audioSys.prev()">&#x23EE;</button>
-      <button id="btn-play-pause" title="Play / Pause"
-              onclick="audioSys.toggle()">&#x25B6;</button>
-      <button id="btn-next"       title="Next track"
-              onclick="audioSys.next()">&#x23ED;</button>
+	<div id="header">
+        <div class="container">
+            <nav>
+                <a href="#"><img src="images/logo.png" class="logo"></a>
+                <ul id="sidemenu">
+                    <li><a href="#header">Home</a></li>
+                    <li><a href="#about">About</a></li>
+                    <li><a href="#work">Work</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                    <i class="fa-sharp fa-solid fa-xmark" onclick="closeMenu()"></i>
+                </ul>
+                <i class="fa-sharp fa-solid fa-bars" onclick="openMenu()"></i>
+            </nav>
+            <div class="header-text">
+                <!-- <p>Musician / Artist / Programmer</p> -->
+                <h1>Hi! I'm <span>Peter.</span> <br>I make cool and weird art.</h1>
+            </div>
+        </div>
     </div>
 
-    <div id="track-info">
-      <span style="opacity:0.35">Add MP3 files to audio/ folder to activate</span>
+    <!-- ========== ABOUT ============= -->
+
+    <div id="about">
+        <div class="container">
+            <div class="row">
+                <div class="about-col-L">
+                    <img src="images/peter_wide_sax.jpg" alt="A headshot of Peter Liley">
+                </div>
+                <div class="about-col-R">
+                    <h2 class="subtitle">About</h2>
+                    <br>
+                    <p>Saxophonist, composer, programmer, and music teacher based in Pōneke Wellington in Aotearoa New Zealand. <br><br> I love repeating patterns, texture, soundscapes, electronic music, smiling, experimental theatre, abstract art, and spreading my love of music to future generations. I also play a huge saxophone.<br><br>Check out my cool and weird creations!</p>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- 16 frequency bars — heights updated each frame by sketch.js -->
-    <div class="player-viz">
-      <div class="viz-bar"></div><div class="viz-bar"></div>
-      <div class="viz-bar"></div><div class="viz-bar"></div>
-      <div class="viz-bar"></div><div class="viz-bar"></div>
-      <div class="viz-bar"></div><div class="viz-bar"></div>
-      <div class="viz-bar"></div><div class="viz-bar"></div>
-      <div class="viz-bar"></div><div class="viz-bar"></div>
-      <div class="viz-bar"></div><div class="viz-bar"></div>
-      <div class="viz-bar"></div><div class="viz-bar"></div>
+
+
+<!-- ================= WORK ==================== -->
+
+<div id="work">
+    <div class="container">
+        <!-- <h2 class="subtitle">Work</h2> -->
+        <div class="work-list">
+            <div onclick="location.href='pages/music/music.html';" style="cursor:pointer; background-image: url('images/score.png')">
+                <h3>Music</h3>
+            </div>
+            <div onclick="location.href='pages/performance/performance.html';" style="cursor:pointer; background-image: url('images/Pyramid-Performance.png')">
+                <h3>Performances</h3>
+            </div>
+            <div onclick="location.href='pages/artwork/artwork.html';" style="cursor:pointer; background-image: url('images/art_deco.gif')">
+                <h3>Artwork</h3>
+            </div>
+            <div onclick="location.href='pages/installations/installations.html';" style="cursor:pointer; background-image: url('images/installation.png')">
+                <h3>Installations</h3>
+            </div>
+        </div>
     </div>
+</div>
 
-    <!-- Social links -->
-    <div class="social-links">
-      <a href="https://www.instagram.com/peterlileymusic/" target="_blank"
-         rel="noopener" title="Instagram">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
-        </svg>
-      </a>
-      <a href="https://twitter.com/LileyPeter" target="_blank"
-         rel="noopener" title="Twitter / X">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-        </svg>
-      </a>
-      <a href="https://genredefying.bandcamp.com/album/unfathomed-waters" target="_blank"
-         rel="noopener" title="Bandcamp">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <path d="M0 18.75l7.437-13.5H24l-7.438 13.5z"/>
-        </svg>
-      </a>
-      <a href="https://open.spotify.com/artist/0ca9kLfuMuJuUPx1y86o0E" target="_blank"
-         rel="noopener" title="Spotify">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
-        </svg>
-      </a>
-      <a href="https://github.com/petlil" target="_blank"
-         rel="noopener" title="GitHub">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/>
-        </svg>
-      </a>
+<!-- =============== CONTACT ==================== -->
+
+<script src="https://kit.fontawesome.com/3e56f55113.js" crossorigin="anonymous"></script>
+
+
+<div id="contact">
+    <div class="container">
+        <div class="row">
+            <div class="contact-left">
+                <h2 class="subtitle">Contact me:</h2>
+                <div class="social-icons">
+                    <a href="https://www.instagram.com/peterlileymusic/"><i class="fa-brands fa-instagram"></i></a>
+                    <a href="https://twitter.com/LileyPeter"><i class="fa-brands fa-twitter"></i></a>
+                    <a href="https://genredefying.bandcamp.com/album/unfathomed-waters"><i class="fa-brands fa-bandcamp"></i></a>
+                    <a href="https://open.spotify.com/artist/0ca9kLfuMuJuUPx1y86o0E"><i class="fa-brands fa-spotify"></i></a>
+                    <a href="https://github.com/petlil"><i class="fa-brands fa-github"></i></a>
+                </div>
+            </div> 
+            <div class="contact-right">
+                <form action="">
+                    <input type="text" name="Name" placeholder="name" required>
+                    <input type="email" name="email" placeholder="email@address.com">
+                    <textarea name="Message" rows="6" placeholder="message"></textarea>
+                    <button type="submit" class="btn">Submit</button>
+                </form>
+            </div>
+        </div>
     </div>
+</div>
 
-  </div><!-- #audio-player -->
+<div class="copyright">
+     <p>Copyright <i class="fa-regular fa-copyright"></i> Peter Liley 2023</p>
+     <br>
+     <p>Website created by me <i class="fa-solid fa-heart"></i> and hosted <a href="https://github.com/petlil/petlil.github.io">on GitHub</a></p>
+</div>
 
-  <!-- ── Scripts (order matters) ──────────────────────────────────────────── -->
+<script type="text/javascript" src="drag.js"></script>
 
-  <!-- p5.js core + p5.sound -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.3/p5.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.3/addons/p5.sound.min.js"></script>
-
-  <!-- Portfolio data (must precede ui.js and sketch.js) -->
-  <script src="js/content.js"></script>
-
-  <!-- Breakpoint config (desktop vs mobile values; must precede sketch.js) -->
-  <script src="js/config.js"></script>
-
-  <!-- AudioSystem (uses p5.sound; init called from setup()) -->
-  <script src="js/audio.js"></script>
-
-  <!-- UISystem (overlay management; init called from setup()) -->
-  <script src="js/ui.js"></script>
-
-  <!-- p5.js sketch — defines setup() and draw(), must load last -->
-  <script src="js/sketch.js"></script>
-
+<script>
+    let sidemenu = document.getElementById("sidemenu");
+    function openMenu() {
+        sidemenu.style.right = "0";
+    }
+    function closeMenu() {
+        sidemenu.style.right = "-150px"
+    }
+</script>
 </body>
 </html>
