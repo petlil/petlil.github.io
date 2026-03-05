@@ -19,6 +19,9 @@
   align-items: center;
   gap: 0.7rem;
 
+  /* Fixed width so the pill never resizes between tracks */
+  width: 36rem;
+  max-width: calc(100vw - 3rem);
   padding: 0.5rem 1.1rem;
   border-radius: 9999px;
 
@@ -30,18 +33,39 @@
   font-family: var(--font-mono);
   font-size: 0.72rem;
   color: var(--color-fg);
-  white-space: nowrap;
   user-select: none;
 }
 
 /* ── track title ── */
 
 .player-title {
-  max-width: 14rem;
+  /* Fills whatever space is left between controls and seek bar */
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: nowrap;
   opacity: 0.7;
   letter-spacing: 0.02em;
+}
+
+/* Fade-out mask on both edges when scrolling */
+.player-title--scroll {
+  mask-image: linear-gradient(to right, transparent 0%, black 8%, black 82%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 82%, transparent 100%);
+}
+
+.player-title__text {
+  display: inline-block;
+}
+
+/* Pause → scroll to end → pause → loop */
+.player-title--scroll .player-title__text {
+  animation: player-marquee 14s ease-in-out infinite;
+}
+
+@keyframes player-marquee {
+  0%,  20% { transform: translateX(0); }
+  80%, 100% { transform: translateX(var(--scroll-dist, 0)); }
 }
 
 /* ── transport buttons ── */
@@ -80,7 +104,7 @@
 .player-seek {
   -webkit-appearance: none;
   appearance: none;
-  width: clamp(8rem, 20vw, 18rem);
+  width: 8rem;
   height: 2px;
   border-radius: 1px;
   /* Fill is applied as inline gradient via JS on timeupdate */

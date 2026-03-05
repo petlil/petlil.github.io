@@ -2,8 +2,8 @@
  * AudioPlayer.js
  *
  * Pill-shaped audio player mounted to a container element.
- * Accepts an array of track objects { title, src } so all audio
- * files in assets/audio/ are navigable without editing JS.
+ * Accepts an array of track objects { name, src } from data/audio.js.
+ * Playlist is shuffled on every page load.
  *
  * Public API for other components:
  *   player.analyser   — AnalyserNode (null until first play)
@@ -13,14 +13,10 @@
 
 import { Component } from '../core/Component.js';
 
-const SKIP_SEC = 10;
-
 // ── inline SVG icons ──────────────────────────────────────────────────────
 
-const I_PLAY = `<svg viewBox="0 0 10 12" width="11" height="13" fill="currentColor"><polygon points="0,0 10,6 0,12"/></svg>`;
+const I_PLAY  = `<svg viewBox="0 0 10 12" width="11" height="13" fill="currentColor"><polygon points="0,0 10,6 0,12"/></svg>`;
 const I_PAUSE = `<svg viewBox="0 0 10 12" width="11" height="13" fill="currentColor"><rect x="0" y="0" width="3.5" height="12" rx="0.5"/><rect x="6.5" y="0" width="3.5" height="12" rx="0.5"/></svg>`;
-const I_BACK  = `<svg viewBox="0 0 13 12" width="13" height="12" fill="currentColor"><rect x="0" y="0" width="2.5" height="12" rx="0.5"/><polygon points="13,0 4,6 13,12"/></svg>`;
-const I_FWD   = `<svg viewBox="0 0 13 12" width="13" height="12" fill="currentColor"><rect x="10.5" y="0" width="2.5" height="12" rx="0.5"/><polygon points="0,0 9,6 0,12"/></svg>`;
 const I_PREV  = `<svg viewBox="0 0 14 12" width="14" height="12" fill="currentColor"><polygon points="13,0 5,6 13,12"/><polygon points="7,0 0,6 7,12" opacity="0.45"/></svg>`;
 const I_NEXT  = `<svg viewBox="0 0 14 12" width="14" height="12" fill="currentColor"><polygon points="1,0 9,6 1,12"/><polygon points="7,0 14,6 7,12" opacity="0.45"/></svg>`;
 
@@ -38,63 +34,73 @@ function encodeSrc(src) {
   return src.split('/').map(encodeURIComponent).join('/');
 }
 
+/** Fisher-Yates in-place shuffle. */
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 // ── AudioPlayer ───────────────────────────────────────────────────────────
 
 export class AudioPlayer extends Component {
   /**
-   * @param {HTMLElement}                    el     - container element
-   * @param {{ title: string, src: string }[]} tracks - playlist from data/audio.js
+   * @param {HTMLElement}                   el     - container element
+   * @param {{ name: string, src: string }[]} tracks - playlist from data/audio.js
    */
   constructor(el, tracks) {
     super(el);
-    this.tracks    = tracks;
+    // Shuffle a copy so the source array stays intact
+    this.tracks    = shuffle([...tracks]);
     this.trackIdx  = 0;
     this.audio     = null;
     this.audioCtx  = null;
-    this.analyser  = null;   // exposed for FFTVisualiser
+    this.analyser  = null;
     this.isPlaying = false;
+    this._seeking  = false; // true while user is dragging the seek bar
   }
 
   get currentTrack() { return this.tracks[this.trackIdx]; }
 
   render() {
-    const { title } = this.currentTrack;
-    const multi = this.tracks.length > 1;
+    const { name } = this.currentTrack;
     return `
       <div class="player-pill">
-        ${multi ? `<button class="player-btn js-prev" title="Previous track">${I_PREV}</button>` : ''}
-        <span class="player-title" title="${title}">${title}</span>
         <div class="player-controls">
-          <button class="player-btn js-back"  title="Back ${SKIP_SEC}s">${I_BACK}</button>
-          <button class="player-btn js-play"  title="Play">${I_PLAY}</button>
-          <button class="player-btn js-fwd"   title="Forward ${SKIP_SEC}s">${I_FWD}</button>
+          <button class="player-btn js-prev" title="Previous track">${I_PREV}</button>
+          <button class="player-btn js-play" title="Play">${I_PLAY}</button>
+          <button class="player-btn js-next" title="Next track">${I_NEXT}</button>
         </div>
+        <span class="player-title">
+          <span class="player-title__text" title="${name}">${name}</span>
+        </span>
         <input type="range" class="player-seek" min="0" max="1000" step="1" value="0">
         <span class="player-time">0:00 / --:--</span>
-        ${multi ? `<button class="player-btn js-next" title="Next track">${I_NEXT}</button>` : ''}
       </div>
     `;
   }
 
   onMount() {
     this._loadTrack(this.trackIdx);
+    this._initTitleScroll();
 
-    // Transport controls
     this.$('.js-play').addEventListener('click', () => this._togglePlay());
-    this.$('.js-back').addEventListener('click', () => this._skip(-SKIP_SEC));
-    this.$('.js-fwd' ).addEventListener('click', () => this._skip( SKIP_SEC));
+    this.$('.js-prev').addEventListener('click', () => this._changeTrack(-1));
+    this.$('.js-next').addEventListener('click', () => this._changeTrack( 1));
 
-    // Prev / next (only present when tracks.length > 1)
-    this.$('.js-prev')?.addEventListener('click', () => this._changeTrack(-1));
-    this.$('.js-next')?.addEventListener('click', () => this._changeTrack( 1));
-
-    // Seek bar
+    // Seek bar — use pointerdown/up so timeupdate can't overwrite the
+    // slider position while the user is dragging it.
     const seekEl = this.$('.player-seek');
-    seekEl.addEventListener('input', () => {
+    seekEl.addEventListener('pointerdown', () => { this._seeking = true; });
+    seekEl.addEventListener('pointerup', () => {
       if (isFinite(this.audio.duration)) {
         this.audio.currentTime = (seekEl.value / 1000) * this.audio.duration;
       }
+      this._seeking = false;
     });
+    seekEl.addEventListener('pointercancel', () => { this._seeking = false; });
   }
 
   // ── private ────────────────────────────────────────────────────────────
@@ -111,7 +117,7 @@ export class AudioPlayer extends Component {
     this.trackIdx  = idx;
     this.isPlaying = false;
 
-    const { title, src } = this.tracks[idx];
+    const { name, src } = this.tracks[idx];
     this.audio = new Audio(encodeSrc(src));
 
     // Re-wire audio source into existing AudioContext if already initialised
@@ -121,9 +127,10 @@ export class AudioPlayer extends Component {
     }
 
     // Update UI
-    const titleEl = this.$('.player-title');
-    if (titleEl) { titleEl.textContent = title; titleEl.title = title; }
+    const textEl = this.$('.player-title__text');
+    if (textEl) { textEl.textContent = name; textEl.title = name; }
     this._resetSeek();
+    this._initTitleScroll();
 
     // Wire events on the new element
     this.audio.addEventListener('timeupdate', () => this._onTimeUpdate());
@@ -133,20 +140,15 @@ export class AudioPlayer extends Component {
       this.isPlaying = false;
       this._syncPlayBtn();
       this._resetSeek();
-      // Auto-advance to next track, or loop back to the first
-      if (this.trackIdx < this.tracks.length - 1) {
-        this._changeTrack(1, true);
-      } else {
-        this._loadTrack(0, true);
-      }
+      // Auto-advance — wraps around to the first track after the last
+      this._changeTrack(1, true);
     });
 
     if (wasPlaying) this._togglePlay();
   }
 
   _changeTrack(delta, autoplay = false) {
-    const next = this.trackIdx + delta;
-    if (next < 0 || next >= this.tracks.length) return;
+    const next = (this.trackIdx + delta + this.tracks.length) % this.tracks.length;
     this._loadTrack(next, autoplay);
   }
 
@@ -161,11 +163,6 @@ export class AudioPlayer extends Component {
     } else {
       this.audio.pause();
     }
-  }
-
-  _skip(sec) {
-    this.audio.currentTime = Math.max(0,
-      Math.min(this.audio.duration || 0, this.audio.currentTime + sec));
   }
 
   _ensureAudioCtx() {
@@ -189,10 +186,13 @@ export class AudioPlayer extends Component {
     const pct = isFinite(duration) && duration > 0
       ? (currentTime / duration) * 100 : 0;
 
-    const seek = this.$('.player-seek');
-    seek.value = (pct / 100) * 1000;
-    seek.style.background =
-      `linear-gradient(to right, var(--color-fg) ${pct}%, var(--color-border) ${pct}%)`;
+    // Don't overwrite the slider position while the user is dragging
+    if (!this._seeking) {
+      const seek = this.$('.player-seek');
+      seek.value = (pct / 100) * 1000;
+      seek.style.background =
+        `linear-gradient(to right, var(--color-fg) ${pct}%, var(--color-border) ${pct}%)`;
+    }
 
     this.$('.player-time').textContent = `${fmt(currentTime)} / ${fmt(duration)}`;
   }
@@ -201,6 +201,26 @@ export class AudioPlayer extends Component {
     const btn = this.$('.js-play');
     btn.innerHTML = this.isPlaying ? I_PAUSE : I_PLAY;
     btn.title     = this.isPlaying ? 'Pause' : 'Play';
+  }
+
+  /** Start a marquee scroll if the title text overflows its container. */
+  _initTitleScroll() {
+    const outer = this.$('.player-title');
+    const inner = this.$('.player-title__text');
+    if (!outer || !inner) return;
+
+    // Reset any existing scroll state first
+    outer.classList.remove('player-title--scroll');
+    inner.style.removeProperty('--scroll-dist');
+
+    // Measure after the browser has re-laid-out without the scroll class
+    requestAnimationFrame(() => {
+      const overflow = inner.scrollWidth - outer.clientWidth;
+      if (overflow > 2) {
+        inner.style.setProperty('--scroll-dist', `-${overflow + 16}px`);
+        outer.classList.add('player-title--scroll');
+      }
+    });
   }
 
   _resetSeek() {
