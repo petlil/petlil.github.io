@@ -23,16 +23,14 @@ const BG = theme.bg;
 // Each entry drives both the default params and the debug UI.
 
 const SLIDER_DEFS = [
-  { key: 'particleCount', label: 'Particles',   min: 50,     max: 1500,  step: 1,       decimals: 0 },
-  { key: 'noiseScale',    label: 'Noise scale', min: 0.0003, max: 0.012, step: 0.0001,  decimals: 4 },
-  { key: 'noiseSpeed',    label: 'Noise speed', min: 0,      max: 0.002, step: 0.00005, decimals: 5 },
-  { key: 'particleSpeed', label: 'Speed',       min: 0.2,    max: 8,     step: 0.1,     decimals: 1 },
-  { key: 'trailAlpha',    label: 'Trail fade',  min: 1,      max: 80,    step: 1,       decimals: 0 },
-  { key: 'particleAlpha', label: 'Opacity',     min: 10,     max: 255,   step: 1,       decimals: 0 },
-  { key: 'particleSize',  label: 'Size',        min: 0.3,    max: 5,     step: 0.1,     decimals: 1 },
-  { key: 'contourAlpha',  label: 'Contours',    min: 0,      max: 60,    step: 1,       decimals: 0 },
-  { key: 'contourLevels', label: 'Iso levels',  min: 2,      max: 24,    step: 1,       decimals: 0 },
-  { key: 'vectorAlpha',   label: 'Vectors',     min: 0,      max: 80,    step: 1,       decimals: 0 },
+  { key: 'noiseScale',    label: 'Noise scale', min: 0.0005, max: 0.012, step: 0.0001, decimals: 4 },
+  { key: 'noiseSpeed',    label: 'Noise speed', min: 0.00005, max: 0.002, step: 0.00005, decimals: 5 },
+  { key: 'particleSpeed', label: 'Speed',       min: 0.5, max: 12, step: 0.1, decimals: 1 },
+  { key: 'trailAlpha',    label: 'Trail fade',  min: 1,  max: 80,  step: 1, decimals: 0 },
+  { key: 'particleAlpha', label: 'Opacity',     min: 10, max: 255, step: 1, decimals: 0 },
+  { key: 'contourAlpha',  label: 'Contours',    min: 0,  max: 60,  step: 1, decimals: 0 },
+  { key: 'contourLevels', label: 'Iso levels',  min: 2,  max: 24,  step: 1, decimals: 0 },
+  { key: 'vectorAlpha',   label: 'Vectors',     min: 0,  max: 80,  step: 1, decimals: 0 },
 ];
 
 // ─── defaults ─────────────────────────────────────────────────────────────
@@ -46,7 +44,7 @@ const DEFAULTS = {
   particleAlpha: 140,            // particle stroke alpha (0–255)
   particleSize:  1.0,            // stroke weight in pixels
   particleColor: theme.particle, // [r, g, b] — set to any theme colour or custom
-  contourAlpha:  22,             // opacity of iso-contour lines (0 = off)
+  contourAlpha:  8,              // opacity of iso-contour lines (0 = off)
   contourLevels: 30,             // number of iso-value lines drawn
   vectorAlpha:   0,              // opacity of flow-direction tick marks (0 = off)
 };
@@ -71,7 +69,7 @@ export class FlowField {
      */
     this.particles = [];
 
-    this._t            = 0;       // noise time offset
+    this._t            = 0;       // noise time offset (advances with noiseSpeed)
     this._sketch       = null;
     this._debugPanel   = null;
     this._debugVisible = false;
