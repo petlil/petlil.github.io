@@ -5,7 +5,7 @@
 
 .ff-debug {
   position: fixed;
-  bottom: 4rem;
+  top: 4rem;
   right: 1.25rem;
   z-index: 9999;
 
@@ -156,7 +156,7 @@
 .ff-debug-toggle {
   all: unset;
   position: fixed;
-  bottom: 1.25rem;
+  top: 1.25rem;
   right: 1.25rem;
   z-index: 9999;
 

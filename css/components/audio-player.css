@@ -4,11 +4,10 @@
 
 #player {
   position: fixed;
-  top: 1.5rem;
+  bottom: 1.5rem;
   left: 50%;
   transform: translateX(-50%);
   z-index: 50;
-  /* Prevent the pill from overlapping the debug toggle in the corner */
   max-width: calc(100vw - 6rem);
 }
 

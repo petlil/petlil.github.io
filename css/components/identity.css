@@ -4,7 +4,7 @@
 
 #identity {
   position: fixed;
-  bottom: 1.5rem;
+  top: 1.5rem;
   left: 1.5rem;
   z-index: 50;
 }
@@ -17,7 +17,7 @@
   text-decoration: none;
   color: var(--color-fg);
   opacity: 0.45;
-  transform-origin: bottom left;
+  transform-origin: top left;
   transition:
     opacity   300ms ease,
     transform 400ms cubic-bezier(0.34, 1.56, 0.64, 1);

@@ -26,11 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
   audioPlayer = new AudioPlayer(document.querySelector('#player'), tracks);
   audioPlayer.mount();
 
-  // 3. Give the flow field a reference to the audio player so it can
-  //    read the AnalyserNode each frame and drive particle forces.
-  flowField.setAudioPlayer(audioPlayer);
-
-  // 4. Section nav — centred name list with particle interaction
+  // 3. Section nav — centred name list with particle interaction
   new SectionNav(document.querySelector('#nav')).mount();
 
   // 4b. Corner identity badge

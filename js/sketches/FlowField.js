@@ -44,7 +44,7 @@ const DEFAULTS = {
   particleAlpha: 140,            // particle stroke alpha (0–255)
   particleSize:  1.0,            // stroke weight in pixels
   particleColor: theme.particle, // [r, g, b] — set to any theme colour or custom
-  contourAlpha:  8,              // opacity of iso-contour lines (0 = off)
+  contourAlpha:  15,              // opacity of iso-contour lines (0 = off)
   contourLevels: 30,             // number of iso-value lines drawn
   vectorAlpha:   0,              // opacity of flow-direction tick marks (0 = off)
 };
@@ -74,9 +74,6 @@ export class FlowField {
     this._debugPanel   = null;
     this._debugVisible = false;
     this._hoverRect    = null;    // DOMRect of the currently selected nav item
-    this._audioPlayer  = null;    // AudioPlayer reference — read .analyser each frame
-    this._audioAmp     = 0;       // smoothed amplitude (0..1)
-    this._audioData    = null;    // reused Uint8Array for frequency data
 
     this._initSketch();
     this._initDebugPanel();
@@ -126,24 +123,6 @@ export class FlowField {
           this.particles.pop();
         }
 
-        // ── Sample audio amplitude once per frame ─────────────────────────
-        // Smoothed with exponential decay so forces feel fluid, not jittery.
-        const analyser = this._audioPlayer?.analyser;
-        if (analyser) {
-          if (!this._audioData || this._audioData.length !== analyser.frequencyBinCount) {
-            this._audioData = new Uint8Array(analyser.frequencyBinCount);
-          }
-          analyser.getByteFrequencyData(this._audioData);
-          // Weight towards bass (first quarter of bins) for a punchy response
-          const bassEnd = (this._audioData.length / 4) | 0;
-          let sum = 0;
-          for (let b = 0; b < bassEnd; b++) sum += this._audioData[b];
-          const raw = sum / bassEnd / 255;
-          this._audioAmp = this._audioAmp * 0.82 + raw * 0.18; // smooth
-        } else {
-          this._audioAmp *= 0.95; // decay to zero when no audio
-        }
-
         // Update + draw every particle
         for (let i = 0; i < this.particles.length; i++) {
           const pt = this.particles[i];
@@ -158,18 +137,6 @@ export class FlowField {
           const force = p.createVector(Math.cos(angle), Math.sin(angle));
           force.mult(0.8);
           pt.applyForce(force);
-
-          // ── Audio forces ───────────────────────────────────────────────
-          if (this._audioAmp > 0.001) {
-            // Ambient: upward lift proportional to amplitude
-            pt.applyForce(p.createVector(0, -this._audioAmp * 3.5));
-
-            // When a nav item is selected: additional burst away from it
-            if (this._hoverRect) {
-              const af = this._audioRepel(p, pt.pos.x, pt.pos.y);
-              if (af) pt.applyForce(af);
-            }
-          }
 
           // Orbit particles around the selected nav element
           const orb = this._orbit(p, pt.pos.x, pt.pos.y);
@@ -199,15 +166,6 @@ export class FlowField {
    */
   setHoverRect(rect) {
     this._hoverRect = rect;
-  }
-
-  /**
-   * Pass the AudioPlayer instance so the FlowField can read its AnalyserNode
-   * each frame and translate amplitude into particle forces.
-   * @param {AudioPlayer} player
-   */
-  setAudioPlayer(player) {
-    this._audioPlayer = player;
   }
 
   // ─── particle orbit ───────────────────────────────────────────────────────
@@ -261,36 +219,6 @@ export class FlowField {
       nx * radial + tx * tangent,
       ny * radial + ty * tangent,
     );
-  }
-
-  // ─── audio repulsion from selected item ──────────────────────────────────
-
-  /**
-   * Returns an outward radial force from the selected nav element,
-   * scaled by the current audio amplitude. Particles near the word
-   * burst away in time with the music.
-   * @param {object} p  - p5 instance
-   * @param {number} px - particle x
-   * @param {number} py - particle y
-   * @returns {p5.Vector|null}
-   */
-  _audioRepel(p, px, py) {
-    const r = this._hoverRect;
-    if (!r) return null;
-
-    const cx = (r.left + r.right)  / 2;
-    const cy = (r.top  + r.bottom) / 2;
-    const dx = px - cx, dy = py - cy;
-    const dist = Math.hypot(dx, dy);
-    const OUTER = 320;
-
-    if (dist > OUTER || dist < 1) return null;
-
-    // Fade force to zero at the outer edge
-    const falloff = 1 - dist / OUTER;
-    const strength = this._audioAmp * falloff * 5;
-
-    return p.createVector((dx / dist) * strength, (dy / dist) * strength);
   }
 
   // ─── flow-direction vectors ───────────────────────────────────────────────
