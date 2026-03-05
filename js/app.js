@@ -5,14 +5,15 @@
  * particle array (flowField.particles) or live params (flowField.params).
  */
 
-import { Router }     from './core/Router.js';
-import { EventBus }   from './core/EventBus.js';
-import { FlowField }  from './sketches/FlowField.js';
+import { Router }        from './core/Router.js';
+import { EventBus }      from './core/EventBus.js';
+import { FlowField }     from './sketches/FlowField.js';
 import { AudioPlayer }   from './components/AudioPlayer.js';
 import { SectionNav }    from './components/SectionNav.js';
 import { Identity }      from './components/Identity.js';
 import { SECTIONS }      from './sections/index.js';
 import { tracks }        from '../data/audio.js';
+import { initMediaSync } from './core/mediaSync.js';
 
 /** Shared instances — importable anywhere they're needed. */
 export let flowField;
@@ -25,6 +26,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // 2. Audio player — playlist defined in data/audio.js
   audioPlayer = new AudioPlayer(document.querySelector('#player'), tracks);
   audioPlayer.mount();
+
+  // 2b. Pause page music when any embedded media (YouTube, Bandcamp) plays
+  initMediaSync(audioPlayer);
 
   // 3. Section nav — centred name list with particle interaction
   new SectionNav(document.querySelector('#nav')).mount();

@@ -1,15 +1,23 @@
 /**
- * education.js — Education & advocacy project data.
+ * data/education.js — Teaching & education content.
  *
- * @type {Array<{
- *   id: string,
- *   title: string,
- *   year: number,
- *   description: string,
- *   link?: string,
- *   tags: string[],
- * }>}
+ * Fields:
+ *   id          — unique identifier
+ *   title       — display title
+ *   meta        — subtitle / context (HTML allowed)
+ *   description — body text (HTML allowed)
  */
-const education = [];
+
+const education = [
+  {
+    id: 'teaching-placeholder',
+    title: 'Teaching',
+    meta: 'Wellington, New Zealand',
+    description: `
+      <p>Peter teaches saxophone, composition, and music technology to students of all levels.</p>
+      <p>Add your teaching content here.</p>
+    `,
+  },
+];
 
 export default education;
