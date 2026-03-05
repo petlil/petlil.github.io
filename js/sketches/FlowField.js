@@ -32,6 +32,7 @@ const SLIDER_DEFS = [
   { key: 'particleSize',  label: 'Size',        min: 0.3,    max: 5,     step: 0.1,     decimals: 1 },
   { key: 'contourAlpha',  label: 'Contours',    min: 0,      max: 60,    step: 1,       decimals: 0 },
   { key: 'contourLevels', label: 'Iso levels',  min: 2,      max: 24,    step: 1,       decimals: 0 },
+  { key: 'vectorAlpha',   label: 'Vectors',     min: 0,      max: 80,    step: 1,       decimals: 0 },
 ];
 
 // ─── defaults ─────────────────────────────────────────────────────────────
@@ -40,13 +41,14 @@ const DEFAULTS = {
   particleCount: 500,
   noiseScale:    0.0028,
   noiseSpeed:    0.00035,
-  particleSpeed: 2.2,
-  trailAlpha:    18,             // background fade per frame — lower = longer trails
+  particleSpeed: 4.7,
+  trailAlpha:    60,             // background fade per frame — lower = longer trails
   particleAlpha: 140,            // particle stroke alpha (0–255)
   particleSize:  1.0,            // stroke weight in pixels
   particleColor: theme.particle, // [r, g, b] — set to any theme colour or custom
   contourAlpha:  22,             // opacity of iso-contour lines (0 = off)
-  contourLevels: 10,             // number of iso-value lines drawn
+  contourLevels: 30,             // number of iso-value lines drawn
+  vectorAlpha:   0,              // opacity of flow-direction tick marks (0 = off)
 };
 
 // ─── FlowField ────────────────────────────────────────────────────────────
@@ -73,6 +75,10 @@ export class FlowField {
     this._sketch       = null;
     this._debugPanel   = null;
     this._debugVisible = false;
+    this._hoverRect    = null;    // DOMRect of the currently selected nav item
+    this._audioPlayer  = null;    // AudioPlayer reference — read .analyser each frame
+    this._audioAmp     = 0;       // smoothed amplitude (0..1)
+    this._audioData    = null;    // reused Uint8Array for frequency data
 
     this._initSketch();
     this._initDebugPanel();
@@ -108,6 +114,9 @@ export class FlowField {
         // Advance noise time
         this._t += this.params.noiseSpeed;
 
+        // Flow-direction vector tick marks
+        if (this.params.vectorAlpha  > 0) this._drawVectors(p);
+
         // Topographic iso-contours of the noise field
         if (this.params.contourAlpha > 0) this._drawContours(p);
 
@@ -117,6 +126,24 @@ export class FlowField {
         }
         while (this.particles.length > this.params.particleCount) {
           this.particles.pop();
+        }
+
+        // ── Sample audio amplitude once per frame ─────────────────────────
+        // Smoothed with exponential decay so forces feel fluid, not jittery.
+        const analyser = this._audioPlayer?.analyser;
+        if (analyser) {
+          if (!this._audioData || this._audioData.length !== analyser.frequencyBinCount) {
+            this._audioData = new Uint8Array(analyser.frequencyBinCount);
+          }
+          analyser.getByteFrequencyData(this._audioData);
+          // Weight towards bass (first quarter of bins) for a punchy response
+          const bassEnd = (this._audioData.length / 4) | 0;
+          let sum = 0;
+          for (let b = 0; b < bassEnd; b++) sum += this._audioData[b];
+          const raw = sum / bassEnd / 255;
+          this._audioAmp = this._audioAmp * 0.82 + raw * 0.18; // smooth
+        } else {
+          this._audioAmp *= 0.95; // decay to zero when no audio
         }
 
         // Update + draw every particle
@@ -132,8 +159,24 @@ export class FlowField {
 
           const force = p.createVector(Math.cos(angle), Math.sin(angle));
           force.mult(0.8);
-
           pt.applyForce(force);
+
+          // ── Audio forces ───────────────────────────────────────────────
+          if (this._audioAmp > 0.001) {
+            // Ambient: upward lift proportional to amplitude
+            pt.applyForce(p.createVector(0, -this._audioAmp * 3.5));
+
+            // When a nav item is selected: additional burst away from it
+            if (this._hoverRect) {
+              const af = this._audioRepel(p, pt.pos.x, pt.pos.y);
+              if (af) pt.applyForce(af);
+            }
+          }
+
+          // Orbit particles around the selected nav element
+          const orb = this._orbit(p, pt.pos.x, pt.pos.y);
+          if (orb) pt.applyForce(orb);
+
           pt.update();
           pt.draw();
 
@@ -147,6 +190,139 @@ export class FlowField {
       };
 
     }, this.container);
+  }
+
+  // ─── public API ───────────────────────────────────────────────────────────
+
+  /**
+   * Set the bounding rect of a DOM element that particles should orbit.
+   * Pass null to clear the effect.
+   * @param {DOMRect|null} rect
+   */
+  setHoverRect(rect) {
+    this._hoverRect = rect;
+  }
+
+  /**
+   * Pass the AudioPlayer instance so the FlowField can read its AnalyserNode
+   * each frame and translate amplitude into particle forces.
+   * @param {AudioPlayer} player
+   */
+  setAudioPlayer(player) {
+    this._audioPlayer = player;
+  }
+
+  // ─── particle orbit ───────────────────────────────────────────────────────
+
+  /**
+   * Returns a force that pulls particles toward an orbit ring around the
+   * hovered nav element and sets them circling counter-clockwise.
+   *
+   * Two components act together every frame:
+   *   • Radial spring — attractive when dist > ORBIT, repulsive when < ORBIT,
+   *     zero exactly on the ring.  Strength scales with displacement.
+   *   • CCW tangential — perpendicular to the outward radial, strongest near
+   *     the element and tapering to zero at OUTER (the influence boundary).
+   *
+   * @param {object} p  - p5 instance
+   * @param {number} px - particle x
+   * @param {number} py - particle y
+   * @returns {p5.Vector|null}
+   */
+  _orbit(p, px, py) {
+    const r = this._hoverRect;
+    if (!r) return null;
+
+    // Centre of the hovered word
+    const cx = (r.left + r.right)  / 2;
+    const cy = (r.top  + r.bottom) / 2;
+    const dx = px - cx, dy = py - cy;
+    const dist = Math.hypot(dx, dy);
+
+    // Outer influence radius — beyond this, no force at all
+    const OUTER = 300;
+    // Orbit radius — the ring particles settle onto
+    const ORBIT = Math.max(r.width * 0.75, 90);
+
+    if (dist > OUTER || dist < 1) return null;
+
+    // Outward unit vector from centre to particle
+    const nx = dx / dist, ny = dy / dist;
+    // CCW tangential unit vector (rotate outward 90° CCW)
+    const tx = -ny, ty = nx;
+
+    // Radial spring: pulls in hard from far away, strongly resists going inside
+    // Higher k = snappier spring; asymmetry (×3 inside) keeps the ring crisp
+    const disp    = dist - ORBIT;
+    const k       = disp > 0 ? 0.18 : 0.54; // stiffer when inside the ring
+    const radial  = -disp * k;
+    // Tangential: strong near the word, fades to zero at OUTER
+    const tangent = (1 - dist / OUTER) * 1.4;
+
+    return p.createVector(
+      nx * radial + tx * tangent,
+      ny * radial + ty * tangent,
+    );
+  }
+
+  // ─── audio repulsion from selected item ──────────────────────────────────
+
+  /**
+   * Returns an outward radial force from the selected nav element,
+   * scaled by the current audio amplitude. Particles near the word
+   * burst away in time with the music.
+   * @param {object} p  - p5 instance
+   * @param {number} px - particle x
+   * @param {number} py - particle y
+   * @returns {p5.Vector|null}
+   */
+  _audioRepel(p, px, py) {
+    const r = this._hoverRect;
+    if (!r) return null;
+
+    const cx = (r.left + r.right)  / 2;
+    const cy = (r.top  + r.bottom) / 2;
+    const dx = px - cx, dy = py - cy;
+    const dist = Math.hypot(dx, dy);
+    const OUTER = 320;
+
+    if (dist > OUTER || dist < 1) return null;
+
+    // Fade force to zero at the outer edge
+    const falloff = 1 - dist / OUTER;
+    const strength = this._audioAmp * falloff * 5;
+
+    return p.createVector((dx / dist) * strength, (dy / dist) * strength);
+  }
+
+  // ─── flow-direction vectors ───────────────────────────────────────────────
+
+  /**
+   * Draws a coarse grid of short tick marks showing the instantaneous
+   * flow direction at each point — the same angle used to steer particles.
+   * @param {object} p - p5 instance
+   */
+  _drawVectors(p) {
+    const CELL   = 28;       // grid spacing in pixels
+    const LEN    = 7;        // half-length of each tick mark
+    const cols   = Math.ceil(p.width  / CELL);
+    const rows   = Math.ceil(p.height / CELL);
+    const ns     = this.params.noiseScale;
+
+    p.stroke(...theme.fg, this.params.vectorAlpha);
+    p.strokeWeight(0.7);
+    p.noFill();
+
+    for (let r = 0; r <= rows; r++) {
+      for (let c = 0; c <= cols; c++) {
+        const x     = c * CELL;
+        const y     = r * CELL;
+        const angle = p.noise(x * ns, y * ns, this._t) * p.TWO_PI * 2;
+        const dx    = Math.cos(angle) * LEN;
+        const dy    = Math.sin(angle) * LEN;
+        p.line(x - dx, y - dy, x + dx, y + dy);
+      }
+    }
   }
 
   // ─── contour lines (marching squares) ────────────────────────────────────
@@ -188,48 +364,101 @@ export class FlowField {
     p.noFill();
 
     const levels = this.params.contourLevels;
+    const n      = rows * cols;
 
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const tl = grid[r       * stride + c    ];
-        const tr = grid[r       * stride + c + 1];
-        const br = grid[(r + 1) * stride + c + 1];
-        const bl = grid[(r + 1) * stride + c    ];
+    // Scratch buffers — allocated once, reused every frame.
+    if (!this._cSeg || this._cSeg.length < n * 4) {
+      this._cSeg   = new Float32Array(n * 4); // [x1,y1,x2,y2] per cell
+      this._cHas   = new Uint8Array(n);
+      this._cUsed  = new Uint8Array(n);
+      this._cFwd   = [];
+      this._cBwd   = [];
+      this._cChain = [];
+    }
+    const seg = this._cSeg, has = this._cHas, used = this._cUsed;
+    const fwd = this._cFwd, bwd = this._cBwd, chain = this._cChain;
 
-        const x0 = c * CELL;
-        const y0 = r * CELL;
+    // Walk from cell (r,c) following the contour arc via shared edge points.
+    // Appends newly-visited points to `out`; stops when no unvisited neighbour
+    // shares the current exit coordinate (exX, exY).
+    const walk = (startR, startC, exX, exY, out) => {
+      let r = startR, c = startC;
+      while (true) {
+        let moved = false;
+        for (let d = 0; d < 4; d++) {
+          const nr = r + (d === 0 ? -1 : d === 1 ? 1 : 0);
+          const nc = c + (d === 2 ? -1 : d === 3 ? 1 : 0);
+          if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+          const ni = nr * cols + nc;
+          if (!has[ni] || used[ni]) continue;
+          const ni4 = ni << 2;
+          const nax = seg[ni4], nay = seg[ni4 + 1];
+          const nbx = seg[ni4 + 2], nby = seg[ni4 + 3];
+          let nx, ny;
+          if      (Math.abs(nax - exX) < 0.5 && Math.abs(nay - exY) < 0.5) { nx = nbx; ny = nby; }
+          else if (Math.abs(nbx - exX) < 0.5 && Math.abs(nby - exY) < 0.5) { nx = nax; ny = nay; }
+          else continue;
+          used[ni] = 1;
+          out.push(nx, ny);
+          r = nr; c = nc; exX = nx; exY = ny;
+          moved = true;
+          break;
+        }
+        if (!moved) break;
+      }
+    };
 
-        for (let li = 1; li <= levels; li++) {
-          const L   = li / (levels + 1); // evenly spaced iso-values in (0,1)
+    for (let li = 1; li <= levels; li++) {
+      const L = li / (levels + 1);
+
+      // Build crossing table for this iso-level.
+      has.fill(0);
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const tl = grid[r       * stride + c    ];
+          const tr = grid[r       * stride + c + 1];
+          const br = grid[(r + 1) * stride + c + 1];
+          const bl = grid[(r + 1) * stride + c    ];
+          const x0 = c * CELL, y0 = r * CELL;
           const pts = [];
-
-          // Top edge: tl → tr
-          if ((tl - L) * (tr - L) < 0) {
-            const t = (L - tl) / (tr - tl);
-            pts.push(x0 + t * CELL, y0);
-          }
-          // Right edge: tr → br
-          if ((tr - L) * (br - L) < 0) {
-            const t = (L - tr) / (br - tr);
-            pts.push(x0 + CELL, y0 + t * CELL);
-          }
-          // Bottom edge: bl → br
-          if ((bl - L) * (br - L) < 0) {
-            const t = (L - bl) / (br - bl);
-            pts.push(x0 + t * CELL, y0 + CELL);
-          }
-          // Left edge: tl → bl
-          if ((tl - L) * (bl - L) < 0) {
-            const t = (L - tl) / (bl - tl);
-            pts.push(x0, y0 + t * CELL);
-          }
-
-          // Draw a line between the first two crossings found (handles
-          // the common 2-crossing case; saddle-point cells are skipped)
+          if ((tl-L)*(tr-L) < 0) { const t=(L-tl)/(tr-tl); pts.push(x0+t*CELL, y0); }
+          if ((tr-L)*(br-L) < 0) { const t=(L-tr)/(br-tr); pts.push(x0+CELL, y0+t*CELL); }
+          if ((bl-L)*(br-L) < 0) { const t=(L-bl)/(br-bl); pts.push(x0+t*CELL, y0+CELL); }
+          if ((tl-L)*(bl-L) < 0) { const t=(L-tl)/(bl-tl); pts.push(x0, y0+t*CELL); }
           if (pts.length >= 4) {
-            p.line(pts[0], pts[1], pts[2], pts[3]);
+            const i4 = (r * cols + c) << 2;
+            seg[i4] = pts[0]; seg[i4+1] = pts[1];
+            seg[i4+2] = pts[2]; seg[i4+3] = pts[3];
+            has[r * cols + c] = 1;
           }
         }
+      }
+
+      // Trace each arc and draw as a smooth Catmull-Rom spline.
+      used.fill(0);
+      for (let start = 0; start < n; start++) {
+        if (!has[start] || used[start]) continue;
+        used[start] = 1;
+        const r0 = (start / cols) | 0, c0 = start % cols;
+        const i4  = start << 2;
+        const ax  = seg[i4], ay = seg[i4+1], bx = seg[i4+2], by = seg[i4+3];
+
+        // Extend in both directions from this seed cell.
+        fwd.length = 0; bwd.length = 0; chain.length = 0;
+        walk(r0, c0, bx, by, fwd); // extend past B
+        walk(r0, c0, ax, ay, bwd); // extend past A
+
+        // Assemble ordered chain: reversed(bwd) + [A,B] + fwd
+        for (let i = bwd.length - 2; i >= 0; i -= 2) chain.push(bwd[i], bwd[i+1]);
+        chain.push(ax, ay, bx, by);
+        for (let i = 0; i < fwd.length; i++) chain.push(fwd[i]);
+
+        // Draw as Catmull-Rom; duplicate end-points serve as control points.
+        p.beginShape();
+        p.curveVertex(chain[0], chain[1]);
+        for (let i = 0; i < chain.length; i += 2) p.curveVertex(chain[i], chain[i+1]);
+        p.curveVertex(chain[chain.length-2], chain[chain.length-1]);
+        p.endShape();
       }
     }
   }
@@ -258,7 +487,10 @@ export class FlowField {
     panel.innerHTML = `
       <div class="ff-debug__header">
         <span>FlowField</span>
-        <kbd>\`</kbd>
+        <div class="ff-debug__header-right">
+          <kbd>\`</kbd>
+          <button class="ff-debug__close" title="Close">×</button>
+        </div>
       </div>
       ${rows}
       <button class="ff-debug__reset">Reset</button>
@@ -276,6 +508,9 @@ export class FlowField {
     btn.addEventListener('click', () => this.toggleDebug());
     document.body.appendChild(btn);
     this._debugToggleBtn = btn;
+
+    // Close button inside the panel header
+    panel.querySelector('.ff-debug__close').addEventListener('click', () => this.toggleDebug());
 
     // Initialise value labels and wire up sliders
     SLIDER_DEFS.forEach(({ key, decimals }) => {
@@ -307,8 +542,7 @@ export class FlowField {
 
   toggleDebug() {
     this._debugVisible = !this._debugVisible;
-    this._debugPanel.style.display     = this._debugVisible ? 'flex' : 'none';
-    this._debugToggleBtn.style.display = this._debugVisible ? 'none' : 'block';
+    this._debugPanel.style.display = this._debugVisible ? 'flex' : 'none';
   }
 
   /**

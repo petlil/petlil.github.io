@@ -1,0 +1,72 @@
+/* ============================================================
+   IDENTITY.CSS — corner avatar / name / Instagram badge
+   ============================================================ */
+
+#identity {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 1.5rem;
+  z-index: 50;
+}
+
+.identity {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+
+  text-decoration: none;
+  color: var(--color-fg);
+  opacity: 0.45;
+  transition: opacity 300ms ease;
+}
+
+.identity:hover {
+  opacity: 1;
+}
+
+/* Circular avatar */
+.identity__avatar {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  overflow: hidden;
+  background-color: var(--color-muted);
+}
+
+.identity__photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Text column */
+.identity__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  line-height: 1.2;
+}
+
+.identity__name {
+  font-family: 'Cormorant Garant', Georgia, serif;
+  font-size: 0.8rem;
+  font-weight: 300;
+  letter-spacing: 0.1em;
+}
+
+.identity__handle {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  opacity: 0.65;
+  letter-spacing: 0.01em;
+}
+
+.identity__ig-icon {
+  flex-shrink: 0;
+  vertical-align: middle;
+}

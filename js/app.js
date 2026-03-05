@@ -5,16 +5,14 @@
  * particle array (flowField.particles) or live params (flowField.params).
  */
 
-import { Router }        from './core/Router.js';
-import { EventBus }      from './core/EventBus.js';
-import { FlowField }     from './sketches/FlowField.js';
+import { Router }     from './core/Router.js';
+import { EventBus }   from './core/EventBus.js';
+import { FlowField }  from './sketches/FlowField.js';
 import { AudioPlayer }   from './components/AudioPlayer.js';
-import { FFTVisualiser } from './sketches/FFTVisualiser.js';
-
-import { MusicSection }     from './sections/Music.js';
-import { ArtSection }       from './sections/Art.js';
-import { EducationSection } from './sections/Education.js';
-import { ProjectsSection }  from './sections/Projects.js';
+import { SectionNav }    from './components/SectionNav.js';
+import { Identity }      from './components/Identity.js';
+import { SECTIONS }      from './sections/index.js';
+import { tracks }        from '../data/audio.js';
 
 /** Shared instances — importable anywhere they're needed. */
 export let flowField;
@@ -24,22 +22,43 @@ document.addEventListener('DOMContentLoaded', () => {
   // 1. Background flow field
   flowField = new FlowField(document.querySelector('#bg'));
 
-  // 2. Audio player (exposes .analyser for the visualiser)
-  audioPlayer = new AudioPlayer(
-    document.querySelector('#player'),
-    'assets/audio/Mac thing demo.mp3'
-  );
+  // 2. Audio player — playlist defined in data/audio.js
+  audioPlayer = new AudioPlayer(document.querySelector('#player'), tracks);
   audioPlayer.mount();
 
-  // 3. FFT visualiser reads audioPlayer.analyser each frame
-  new FFTVisualiser(document.querySelector('#visualiser'), audioPlayer);
+  // 3. Give the flow field a reference to the audio player so it can
+  //    read the AnalyserNode each frame and drive particle forces.
+  flowField.setAudioPlayer(audioPlayer);
 
-  // 4. Section components
-  new MusicSection(document.querySelector('#section-music')).mount();
-  new ArtSection(document.querySelector('#section-art')).mount();
-  new EducationSection(document.querySelector('#section-education')).mount();
-  new ProjectsSection(document.querySelector('#section-projects')).mount();
+  // 4. Section nav — centred name list with particle interaction
+  new SectionNav(document.querySelector('#nav')).mount();
 
-  // 5. Router
+  // 4b. Corner identity badge
+  new Identity(document.querySelector('#identity')).mount();
+
+  // 5. Build section panels dynamically from the SECTIONS config.
+  //    To rename / add / reorder sections, edit js/sections/index.js only.
+  const appEl = document.querySelector('#app');
+  const sectionEls = [];
+
+  SECTIONS.forEach(({ slug, side, Component }) => {
+    const el = document.createElement('section');
+    el.id          = `section-${slug}`;
+    el.className   = 'section';
+    el.dataset.slug = slug;
+    el.dataset.side = side;
+    appEl.appendChild(el);
+    sectionEls.push(el);
+    new Component(el).mount();
+  });
+
+  // 6. Route → section visibility (slide-in via is-active class)
+  EventBus.on('route', (slug) => {
+    sectionEls.forEach(el => {
+      el.classList.toggle('is-active', el.dataset.slug === slug);
+    });
+  });
+
+  // 7. Router
   Router.init();
 });

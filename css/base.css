@@ -10,7 +10,7 @@
   --color-fg:        #281e1e;                   /* dark warm         — theme.fg     */
   --color-accent:    #a51e1e;                   /* deep red          — theme.accent */
   --color-muted:     #8c7878;                   /* muted warm grey   — theme.muted  */
-  --color-surface:   rgba(202, 190, 190, 0.85); /* semi-transparent surface         */
+  --color-surface:   rgba(202, 190, 190, 0.35); /* frosted-glass surface            */
   --color-border:    rgba(165, 30, 30, 0.15);   /* subtle accent border             */
 
   /* Typography */
@@ -51,6 +51,10 @@ html, body {
 }
 
 html {
+  background-color: var(--color-bg); /* fallback until canvas renders */
+}
+
+html {
   font-size: 16px;
 }
 
@@ -58,7 +62,7 @@ body {
   font-family: var(--font-sans);
   font-size: var(--font-size-base);
   line-height: var(--line-height);
-  background-color: var(--color-bg);
+  background-color: transparent; /* canvas in #bg provides the background */
   color: var(--color-fg);
 }
 
