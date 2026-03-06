@@ -40,8 +40,7 @@
   background: transparent;
 
   /* Top: clear the debug toggle (top 1.25rem + ~1.75rem height + gap) */
-  /* Bottom: clear the audio player pill (bottom 1.5rem + ~2.5rem pill) */
-  padding: 4.5rem 1.75rem 6rem 1.75rem;
+  padding: 4.5rem 1.75rem 2.5rem 1.75rem;
   box-sizing: border-box;
 
   /* Cards stack vertically with gap between them */
