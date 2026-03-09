@@ -268,6 +268,59 @@
   text-align: right;
 }
 
+/* ── hero image (text-only project cards) ── */
+
+.card__hero {
+  display: block;
+  width: 100%;
+  max-height: 300px;
+  object-fit: cover;
+  object-position: center top;
+}
+
+/* ── social / external links ── */
+
+.card__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.card__link {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: inherit;
+  text-decoration: none;
+  opacity: 0.45;
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 2px;
+  transition: opacity 150ms;
+}
+
+.card__link::before {
+  content: '↗ ';
+  opacity: 0.6;
+}
+
+/* Icon links — suppress the arrow, show the SVG instead */
+.card__link--instagram::before {
+  content: '';
+}
+
+.card__link-icon {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 0.3em;
+  margin-bottom: 0.1em;
+}
+
+.card__link:hover {
+  opacity: 1;
+}
+
 /* ── panel scrollbar ── */
 
 .section {

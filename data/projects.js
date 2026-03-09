@@ -6,10 +6,37 @@
  *   title       — display title
  *   meta        — subtitle / context (HTML allowed)
  *   description — body text (HTML allowed)
- *   videoSrc    — YouTube embed URL (with enablejsapi=1)
+ *   image       — path to hero image (shown above content, no video)
+ *   videoSrc    — YouTube embed URL (with enablejsapi=1); omit for text-only cards
+ *   links       — array of { label, href, icon? } for social/external links
  */
 
 const projects = [
+  {
+    id: 'the-temple',
+    title: 'The Temple',
+    meta: 'Band · Wellington',
+    image: 'assets/images/the-temple/temple_cover.png',
+    description: `
+      <p>Spiritual instrumental-electronic ceremonies in Pōneke NZ.</p>
+    `,
+    links: [
+      { label: '@thetemplenz', href: 'https://www.instagram.com/thetemplenz/', icon: 'instagram' },
+    ],
+  },
+  {
+    id: 'atoms',
+    title: 'ATOMS',
+    description: `
+      <p>ATOMS is a live audiovisual show that brings together music, visual art, and text,
+      created by sound artists The Temple in collaboration with visual artist Zoë Bell and
+      writer Una Cruickshank.</p>
+      <p>Inspired by spiritual, philosophical, poetic and scientific texts, ATOMS searches for
+      meaning in a world of microscopic particles, accompanied by live-rendered visuals, poetry,
+      and immersive sonic tapestries.</p>
+    `,
+    videoSrc: 'https://www.youtube.com/embed/kFIzc-7WxVI?enablejsapi=1',
+  },
   {
     id: 'actuate-intimate',
     title: 'Actuate Intimate',
@@ -21,26 +48,6 @@ const projects = [
       that many people experienced due to lockdowns.</p>
     `,
     videoSrc: 'https://www.youtube.com/embed/QTOwUwxtvXc?enablejsapi=1',
-  },
-  {
-    id: 'pattern-7',
-    title: 'Pattern 7',
-    meta: 'Live performance · Wellington Cathedral of St Paul, Feb 2022',
-    videoSrc: 'https://www.youtube.com/embed/Un6ExdGocHA?enablejsapi=1',
-  },
-  {
-    id: 'patterns-i-ii-iii',
-    title: 'Patterns i, ii and iii',
-    meta: '1st place · NZ School of Music Composition Competition 2019',
-    description: 'i. Tumble<br>ii. Ripple Arc<br>iii. In Agony',
-    videoSrc: 'https://www.youtube.com/embed/_n0QaGwq3tA?enablejsapi=1',
-  },
-  {
-    id: 'deux-images-performance',
-    title: 'Deux Images',
-    meta: 'Bella Anderson (flute) &amp; Liam Furey (piano)',
-    description: 'i. Small Scurrying<br>ii. Glimpse',
-    videoSrc: 'https://www.youtube.com/embed/7H52NkXAm9o?enablejsapi=1',
   },
 ];
 
