@@ -6,7 +6,8 @@
  * reveals a horizontally-scrollable strip of all images in the series.
  */
 
-import { Component } from '../core/Component.js';
+import { Component }    from '../core/Component.js';
+import { initLightbox } from '../core/lightbox.js';
 import art from '../../data/art.js';
 
 function renderImageCard(item) {
@@ -61,5 +62,8 @@ export class ArtSection extends Component {
           : `View series (${gallery.querySelectorAll('img').length})`;
       });
     });
+
+    // Lightbox for all images — standalone cards, collection covers, gallery strips
+    initLightbox(this.el, '.card__image, .card__gallery img');
   }
 }

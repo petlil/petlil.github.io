@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', (e) => {
     if (!Router.current()) return;
     const inUI = e.target.closest(
-      '#app, #nav, #player, #identity, .ff-debug, .ff-debug-toggle'
+      '#app, #nav, #modal, #player, #identity, .ff-debug, .ff-debug-toggle'
     );
     if (!inUI) Router.navigate('');
   });

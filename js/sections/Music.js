@@ -1,4 +1,5 @@
-import { Component } from '../core/Component.js';
+import { Component }    from '../core/Component.js';
+import { initLightbox } from '../core/lightbox.js';
 import albums, { videos } from '../../data/music.js';
 
 function formatTime(secs) {
@@ -71,6 +72,7 @@ function wirePlayer(player) {
 
   allAudios.push(audio);
 
+  // ── Play / pause ──────────────────────────────────────────────────────────
   btn.addEventListener('click', () => {
     if (audio.paused) {
       allAudios.forEach(a => { if (a !== audio) a.pause(); });
@@ -82,25 +84,39 @@ function wirePlayer(player) {
 
   audio.addEventListener('play',  () => { btn.textContent = '▐▐'; });
   audio.addEventListener('pause', () => { btn.textContent = '▶'; });
-
-  audio.addEventListener('loadedmetadata', () => {
-    scrubber.max = audio.duration;
-  });
-
-  audio.addEventListener('timeupdate', () => {
-    scrubber.max   = audio.duration || 0;
-    scrubber.value = audio.currentTime;
-    timeEl.textContent = formatTime(audio.currentTime);
-  });
-
   audio.addEventListener('ended', () => {
     btn.textContent    = '▶';
     scrubber.value     = 0;
     timeEl.textContent = '0:00';
   });
 
+  // ── Scrubber ──────────────────────────────────────────────────────────────
+  // Use a dragging flag so timeupdate doesn't fight with the user's drag.
+  let dragging = false;
+
+  scrubber.addEventListener('pointerdown', () => { dragging = true; });
+
+  // Listen on document so pointerup is caught even if released off the thumb
+  document.addEventListener('pointerup', () => {
+    if (!dragging) return;
+    dragging = false;
+    audio.currentTime = Number(scrubber.value);
+  });
+
+  // Show time readout live while dragging, without moving the thumb back
   scrubber.addEventListener('input', () => {
-    audio.currentTime = scrubber.value;
+    timeEl.textContent = formatTime(Number(scrubber.value));
+  });
+
+  audio.addEventListener('loadedmetadata', () => {
+    scrubber.max = audio.duration;
+  });
+
+  audio.addEventListener('timeupdate', () => {
+    if (dragging) return;           // don't fight the user's drag
+    scrubber.max   = audio.duration || 0;
+    scrubber.value = audio.currentTime;
+    timeEl.textContent = formatTime(audio.currentTime);
   });
 }
 
@@ -114,27 +130,6 @@ export class MusicSection extends Component {
 
   onMount() {
     this.el.querySelectorAll('.card__player').forEach(wirePlayer);
-    this._wireLightbox();
-  }
-
-  _wireLightbox() {
-    const modal = document.getElementById('modal');
-
-    const open = (src, alt) => {
-      modal.innerHTML = `<img class="modal__img" src="${src}" alt="${alt}">`;
-      modal.classList.add('is-open');
-    };
-
-    const close = () => {
-      modal.classList.remove('is-open');
-      // Remove image after transition so it doesn't flash on next open
-      modal.addEventListener('transitionend', () => { modal.innerHTML = ''; }, { once: true });
-    };
-
-    this.el.querySelectorAll('.card__album-cover').forEach(img => {
-      img.addEventListener('click', () => open(img.src, img.alt));
-    });
-
-    modal.addEventListener('click', close);
+    initLightbox(this.el, '.card__album-cover');
   }
 }
