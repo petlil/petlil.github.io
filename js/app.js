@@ -16,24 +16,27 @@ import { SECTIONS }      from './sections/index.js';
 export let flowField;
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Guard: prevent double-mounting if this callback somehow fires twice
+  const appEl = document.querySelector('#app');
+  if (appEl.childElementCount > 0) return;
+
   // 1. Background flow field
   flowField = new FlowField(document.querySelector('#bg'));
 
   // 2. Section nav — centred name list with particle interaction
   new SectionNav(document.querySelector('#nav')).mount();
 
-  // 4b. Corner identity badge
+  // 3. Corner identity badge
   new Identity(document.querySelector('#identity')).mount();
 
-  // 5. Build section panels dynamically from the SECTIONS config.
+  // 4. Build section panels dynamically from the SECTIONS config.
   //    To rename / add / reorder sections, edit js/sections/index.js only.
-  const appEl = document.querySelector('#app');
   const sectionEls = [];
 
   SECTIONS.forEach(({ slug, side, Component }) => {
     const el = document.createElement('section');
-    el.id          = `section-${slug}`;
-    el.className   = 'section';
+    el.id           = `section-${slug}`;
+    el.className    = 'section';
     el.dataset.slug = slug;
     el.dataset.side = side;
     appEl.appendChild(el);
@@ -41,20 +44,20 @@ document.addEventListener('DOMContentLoaded', () => {
     new Component(el).mount();
   });
 
-  // 6. Route → section visibility (slide-in via is-active class)
+  // 5. Route → section visibility (slide-in via is-active class)
   EventBus.on('route', (slug) => {
     sectionEls.forEach(el => {
       el.classList.toggle('is-active', el.dataset.slug === slug);
     });
   });
 
-  // 7. Router
+  // 6. Router
   Router.init();
 
-  // 8. Click anywhere on the background (canvas / empty space) to close the
+  // 7. Click anywhere on the background (canvas / empty space) to close the
   //    open panel. Clicks inside any UI element are ignored.
   document.addEventListener('click', (e) => {
-    if (!Router.current()) return; // nothing open, nothing to do
+    if (!Router.current()) return;
     const inUI = e.target.closest(
       '#app, #nav, #player, #identity, .ff-debug, .ff-debug-toggle'
     );

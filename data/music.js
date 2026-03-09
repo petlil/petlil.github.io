@@ -1,52 +1,63 @@
 /**
- * data/music.js — Music portfolio data.
- *
- * Fields:
- *   id          — unique identifier
- *   title       — display title
- *   meta        — subtitle / context line (HTML allowed)
- *   description — optional body text (HTML allowed)
- *   embedSrc    — Bandcamp / RNZ iframe src
- *   embedHeight — iframe height in px
+ * data/music.js — Self-hosted albums and video performances for the Music section.
  */
 
-const music = [
+export const videos = [
   {
-    id: 'enter-the-temple',
-    title: 'Enter the Temple',
-    meta: 'Featured track · from <em>Unfathomed Waters</em>',
-    embedSrc: 'https://bandcamp.com/EmbeddedPlayer/album=3067107200/size=large/bgcol=333333/linkcol=0f91ff/tracklist=false/artwork=small/track=3283538834/transparent=true/',
-    embedHeight: 120,
+    id: 'pattern-7',
+    title: 'Pattern 7',
+    meta: 'Live performance · Wellington Cathedral of St Paul, Feb 2022',
+    videoSrc: 'https://www.youtube.com/embed/Un6ExdGocHA?enablejsapi=1',
   },
+];
+
+const albums = [
   {
-    id: 'deux-images',
-    title: 'Deux Images',
-    meta: 'Trio Élan — Donald Armstrong (violin), Simon Brew (saxophone) &amp; Sarah Watkins (piano)',
-    description: 'i. Small Scurrying<br>ii. Glimpse',
-    embedSrc: 'https://www.rnz.co.nz/audio/remote-player?id=2018876699',
-    embedHeight: 60,
+    id: 'vastness-vastness',
+    title: 'Vastness Vastness',
+    description: 'A collection of works for voice and electronics.',
+    cover: 'assets/audio/Vastness%20Vastness/Vastness%20Vastness%20cover.jpg',
+    tracks: [
+      { title: 'Vastness Vastness', file: 'assets/audio/Vastness%20Vastness/1_Vastness%20Vastness.mp3' },
+      { title: 'Lullaby',           file: 'assets/audio/Vastness%20Vastness/2_Lullaby.mp3' },
+    ],
   },
   {
     id: 'unfathomed-waters',
     title: 'Unfathomed Waters',
-    meta: 'Full album · Jack Woodbury &amp; Peter Liley',
-    description: `
-      <p>A collection of collaborative works.</p>
-      <p><em>"This quasi-ambient collection of calming stasis and passages of unease is where crackling
-      sonic glitches and discordant sounds disrupt the glacial beauty on some of these eight
-      instrumentals inspired by H.P. Lovecraft's 1920s aquatic, submarine mystery story The Temple."</em></p>
-      <p>— Graham Reid, <a href="https://www.elsewhere.co.nz/further/10408/motte-rotor-liley-and-woodbury-2022-exploring-the-dark-waters-beneath/" target="_blank" rel="noopener">Elsewhere.co.nz</a></p>
-    `,
-    embedSrc: 'https://bandcamp.com/EmbeddedPlayer/album=3067107200/size=large/bgcol=333333/linkcol=e32c14/artwork=small/transparent=true/',
-    embedHeight: 406,
+    description: 'A collaborative album with Jack Woodbury.',
+    cover: 'assets/audio/Unfathomed%20Waters/Unfathomed%20Waters%20Cover.jpg',
+    tracks: [
+      { title: 'There Came A Third Impression',                        file: 'assets/audio/Unfathomed%20Waters/01%20There%20Came%20A%20Third%20Impression.mp3' },
+      { title: 'To The Surface',                                       file: 'assets/audio/Unfathomed%20Waters/02%20To%20The%20Surface.mp3' },
+      { title: 'Tinkering With The Machinery',                         file: 'assets/audio/Unfathomed%20Waters/03%20Tinkering%20With%20The%20Machinery.mp3' },
+      { title: 'Almost Without Plans',                                 file: 'assets/audio/Unfathomed%20Waters/04%20Almost%20Without%20Plans.mp3' },
+      { title: 'Drifting South, Meanwhile Sinking Deeper And Deeper',  file: 'assets/audio/Unfathomed%20Waters/05%20Drifting%20South%2C%20Meanwhile%20Sinking%20Deeper%20And%20Deeper.mp3' },
+      { title: 'The Coming Deprivation Of Light',                      file: 'assets/audio/Unfathomed%20Waters/06%20The%20Coming%20Deprivation%20Of%20Light.mp3' },
+      { title: 'Enter The Temple',                                     file: 'assets/audio/Unfathomed%20Waters/07%20Enter%20The%20Temple.mp3' },
+      { title: 'Unfathomed Waters (I & II)',                           file: 'assets/audio/Unfathomed%20Waters/08%20Unfathomed%20Waters%20(I%20%26%20II).mp3' },
+    ],
   },
   {
-    id: 'fragments-1',
-    title: 'Fragments 1',
-    meta: 'Live experimental set · Jack Woodbury &amp; Peter Liley',
-    embedSrc: 'https://bandcamp.com/EmbeddedPlayer/album=4175934274/size=large/bgcol=333333/linkcol=e32c14/tracklist=false/artwork=small/transparent=true/',
-    embedHeight: 120,
+    id: 'bostrom-scenario',
+    title: 'The Bostrom Scenario',
+    description: 'Original motion picture soundtrack.',
+    cover: 'assets/audio/The%20Bostrom%20Scenario/Bostrom%20Scenario%20Album%20Cover.png',
+    tracks: [
+      { title: 'The Conspiracy',               file: 'assets/audio/The%20Bostrom%20Scenario/1_The_Conspiracy.mp3' },
+      { title: 'The Warehouse',                file: 'assets/audio/The%20Bostrom%20Scenario/2_The_Warehouse.mp3' },
+      { title: 'Astral Projection',            file: 'assets/audio/The%20Bostrom%20Scenario/3_Astral_Projection.mp3' },
+      { title: 'Accomplice to a Traitor',      file: 'assets/audio/The%20Bostrom%20Scenario/4_Accomplice_to_a_Traitor.mp3' },
+      { title: 'The House',                    file: 'assets/audio/The%20Bostrom%20Scenario/5_The_House.mp3' },
+      { title: 'Malthouse Costumes',           file: 'assets/audio/The%20Bostrom%20Scenario/6_Malthouse_Costumes.mp3' },
+      { title: 'Childhood Stories',            file: 'assets/audio/The%20Bostrom%20Scenario/7_Childhood_Stories.mp3' },
+      { title: 'Shootout',                     file: 'assets/audio/The%20Bostrom%20Scenario/8_Shootout.mp3' },
+      { title: 'The Camera',                   file: 'assets/audio/The%20Bostrom%20Scenario/9_The_Camera.mp3' },
+      { title: 'Artificial Intelligence',      file: 'assets/audio/The%20Bostrom%20Scenario/10_Artificial_intelligence.mp3' },
+      { title: 'I Will Always Remember You',   file: 'assets/audio/The%20Bostrom%20Scenario/11_I_Will_Always_Remember_You.mp3' },
+      { title: 'I Want You to Imagine a Fish', file: 'assets/audio/The%20Bostrom%20Scenario/12_I_Want_You_to_Imagine_a_Fish.mp3' },
+    ],
   },
 ];
 
-export default music;
+export default albums;
