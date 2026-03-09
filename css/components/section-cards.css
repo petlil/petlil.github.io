@@ -278,6 +278,36 @@
   object-position: center top;
 }
 
+/* ── full-display hero: always shows complete image, padded + rounded ── */
+
+.card__hero--full {
+  display: block;
+  width: calc(100% - 3rem);
+  margin: 1.25rem auto 0;
+  height: auto;
+  border-radius: 10px;
+}
+
+/* ── logo image inside description ── */
+
+.card__description-logo {
+  display: block;
+  height: 4rem;
+  width: auto;
+  max-width: 100%;
+  opacity: 0.75;
+  margin-bottom: 1rem;
+}
+
+/* ── full-width photo at bottom of card (direct child, full opacity) ── */
+
+.card__description-photo {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+
 /* ── social / external links ── */
 
 .card__links {
