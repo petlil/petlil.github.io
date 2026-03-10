@@ -1,0 +1,315 @@
+*{
+    margin: 0;
+    padding: 0;
+    font-family: 'Poppins', sans-serif;
+    box-sizing: border-box;
+}
+
+html{
+    scroll-behavior: smooth;
+}
+
+body{
+    background: #080808;
+    color: #fff;
+
+}
+
+#header{
+    width: 100%;
+    height: 100vh;
+    background-image: url(images/Nice_mid.jpg);
+    background-size: cover;
+    background-position: top;
+}
+
+.container{
+    padding: 10px 10%;
+}
+
+nav{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.logo{
+    width: 30%;
+}
+
+nav ul li{
+    display: inline-block;
+    list-style: none;
+    margin: 10px 20px;
+}
+
+nav ul li a{
+    color: #fff;
+    text-decoration: none;
+    position: relative;
+}
+
+nav ul li a::after{
+    content: '';
+    width: 0%;
+    height: 3px;
+    background: crimson;
+    position: absolute;
+    left: 50%;
+    bottom :-4px;
+    transition: 0.5s;
+}
+
+nav ul li a:hover::after{
+    width: 100%;
+    left: 0%;
+}
+
+.header-text{
+    margin-top: 10%;
+    font-size: 20px;
+}
+
+.header-text h1{
+    font-size: 50px;
+    margin-top: 25%;
+}
+
+.header-text h1 span{
+    color: crimson;
+}
+
+/* ============ ABOUT =========== */
+
+#about{
+    padding: 40px;
+    top: 30px;
+    color: #ababab;
+}
+
+.row{
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+}
+
+.about-col-L{
+    flex-basis: 35%;
+}
+
+.about-col-L img{
+    width: 100%;
+    border-radius: 20px;
+}
+
+.about-col-R{
+    flex-basis: 60%;
+}
+
+.subtitle{
+    font-size: 50px;
+    font-weight: 600;
+    color: #fff;
+}
+
+/* ========= WORK ============ */
+
+#work{
+    padding: 30px 0;
+    margin-bottom: 10%;
+}
+
+.work-list{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(21%, 1fr));
+    grid-gap: 5%;
+    margin-top: 5%;
+}
+
+.work-list div{
+    background-color: #262626;
+    background-size: cover;
+    background-position: center;
+    /* padding: 40px; */
+    padding-top: 200px;
+    padding-bottom: 200px;
+    /* border-radius: 20px; */
+}
+
+.work-list h3{
+    color: #fff;
+    font-size: 150%;
+    text-align: center;
+    text-decoration: none;
+    padding: 2%;
+    background-color: #000;
+    transition: 0.5s;
+}
+
+.work-list div:hover > h3{
+    background-color: crimson;
+    transform: translateY(-20%);
+    width: 100%;
+    left: 0%;
+}
+
+
+/* ========== CONTACT ============== */
+
+.contact-left{
+    flex-basis: 35%;
+}
+
+.contact-right{
+    flex-basis: 60%;
+}
+
+.contact-left p{
+    margin-top: 10%;
+}
+.contact-left p i {
+    color: crimson;
+    margin-right: 5%;
+}
+
+.social-icons{
+    margin-top: 10%;
+}
+
+.social-icons a{
+    text-decoration: none;
+    font-size: 30px;
+    margin-right: 5%;
+    color: crimson;
+    display: inline-block;
+    transition: 0.2s;
+}
+
+.social-icons a:hover{
+    color: #fff;
+    transform: translateY(-10%);
+}
+
+.btn {
+    cursor: pointer;
+    background-color: crimson;
+    color: #fff;
+    padding: 3%;
+    padding-right: 5%;
+    padding-left: 5%;
+    border-radius: 5px;
+    border: none;
+    transition: 0.2s;
+}
+
+.btn:hover{
+    background-color: darkred;
+}
+
+.contact-right form{
+    width: 100%;
+}
+
+form input, form textarea{
+    width: 100%;
+    border: 0;
+    outline: none;
+    background: #262626;
+    padding: 3%;
+    margin: 3%;
+    color: #fff;
+    font-size: 18px;
+    border-radius: 5px;
+    resize: none;
+}
+
+form .btn{
+    padding: 50%, 100%;
+    font-size: 18px;
+    margin-top: 20px;
+    margin-left: 3%;
+}
+
+.copyright{
+    font-size: small;
+    width: 100%;
+    text-align: center;
+    padding: 2%;
+    background-color: #262626;
+    margin-top: 5%;
+}
+
+.copyright a{
+    color: crimson;
+    text-decoration: underline;
+}
+
+
+/* ========== CSS FOR SMALL SCREENS ========= */
+
+.fa-sharp.fa-solid{
+    display: none;
+}
+
+@media only screen and (max-width: 600px){
+    #header{
+        background-image: url(images/Nice_mid_phone.jpg);
+    }
+    .logo{ 
+        margin-top: 5%;
+        width: 50%;
+    }
+    .header-text h1{
+        margin-top: 40%;
+        font-size: 30px;
+    }
+    .fa-sharp.fa-solid{
+        display: block;
+        font-size: 20px;
+    }
+    nav ul{
+        background: crimson;
+        position: fixed;
+        top: 0;
+        right: -150px;
+
+        width: 150px;
+        height: 100vh;
+        padding-top: 50px;
+        z-index: 2;
+        transition: right 0.5s;
+    }
+    nav ul li{
+        display: block;
+        margin: 25px;
+    }
+    nav ul  .fa-sharp.fa-solid{
+        position: absolute;
+        top: 25px;
+        left: 25px;
+        cursor: pointer;
+    }
+    .subtitle{
+        font-size: 40px;
+    }
+    .about-col-L, .about-col-R{
+        flex-basis: 100%;
+    }
+    .work-list{
+        grid-template-columns: repeat(auto-fit, minmax(25%, 100%));
+        margin-top: 0%;
+    }
+    #work{
+        margin-bottom: 30%;
+    }
+    .contact-left, .contact-right{
+        flex-basis: 100%;
+    }
+    form input, form textarea, form .btn{
+        margin-top: 5%;
+        margin-left: 0;
+    }
+
+}
+

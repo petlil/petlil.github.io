@@ -1,0 +1,185 @@
+/* ============================================================
+   DEBUG.CSS — FlowField debug panel
+   Toggle with backtick (`)
+   ============================================================ */
+
+.ff-debug {
+  position: fixed;
+  top: 4rem;
+  right: 1.25rem;
+  z-index: 9999;
+
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+
+  min-width: 270px;
+  padding: 0.85rem 1rem 0.9rem;
+
+  background: rgba(0, 0, 0, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+
+  font-family: ui-monospace, 'Cascadia Code', monospace;
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.8);
+  user-select: none;
+}
+
+/* ── header ── */
+
+.ff-debug__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.3rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.45;
+}
+
+.ff-debug__header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.ff-debug__close {
+  all: unset;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  opacity: 0.4;
+  transition: opacity 120ms;
+  padding: 0 2px;
+}
+
+.ff-debug__close:hover {
+  opacity: 1;
+}
+
+.ff-debug__header kbd {
+  font-family: inherit;
+  font-size: 0.65rem;
+  padding: 1px 5px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  opacity: 0.8;
+}
+
+/* ── rows ── */
+
+.ff-debug__row {
+  display: grid;
+  grid-template-columns: 6rem 1fr 3rem;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: default;
+}
+
+.ff-debug__label {
+  opacity: 0.6;
+  white-space: nowrap;
+}
+
+.ff-debug__value {
+  text-align: right;
+  opacity: 0.9;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── range slider ── */
+
+.ff-debug__slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 1px;
+  outline: none;
+  cursor: pointer;
+}
+
+.ff-debug__slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  transition: background 120ms;
+}
+
+.ff-debug__slider:hover::-webkit-slider-thumb {
+  background: #ffffff;
+}
+
+.ff-debug__slider::-moz-range-thumb {
+  width: 9px;
+  height: 9px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+}
+
+/* ── reset button ── */
+
+.ff-debug__reset {
+  all: unset;
+  margin-top: 0.35rem;
+  padding: 0.3rem 0;
+  text-align: center;
+  font-family: inherit;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 150ms, border-color 150ms;
+}
+
+.ff-debug__reset:hover {
+  opacity: 0.9;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* ── persistent toggle button ── */
+
+.ff-debug-toggle {
+  all: unset;
+  position: fixed;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 9999;
+
+  width: 1.75rem;
+  height: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 0.85rem;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.5);
+  color: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  transition: color 150ms, border-color 150ms, background 150ms;
+}
+
+.ff-debug-toggle:hover {
+  color: rgba(255, 255, 255, 0.8);
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.7);
+}

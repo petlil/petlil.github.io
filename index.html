@@ -1,119 +1,45 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<meta charset="UTF-8">
-    <meta name="viewport" content="width-device-width, initial-scale=1.0">
-	<title>Peter Liley</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Peter Liljenström</title>
+
+  <!-- Cormorant Garant — display serif for section navigation -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garant:ital,wght@0,300;1,300&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components/nav.css">
+  <link rel="stylesheet" href="css/components/modal.css">
+  <link rel="stylesheet" href="css/components/debug.css">
+  <link rel="stylesheet" href="css/components/identity.css">
+  <link rel="stylesheet" href="css/components/section-cards.css?v=2">
+  <link rel="stylesheet" href="css/mobile.css">
+
+  <!-- p5.js — must load before app.js; instance mode used throughout -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
 </head>
 <body>
-	<div id="header">
-        <div class="container">
-            <nav>
-                <a href="#"><img src="images/logo.png" class="logo"></a>
-                <ul id="sidemenu">
-                    <li><a href="#header">Home</a></li>
-                    <li><a href="#about">About</a></li>
-                    <li><a href="#work">Work</a></li>
-                    <li><a href="#contact">Contact</a></li>
-                    <i class="fa-sharp fa-solid fa-xmark" onclick="closeMenu()"></i>
-                </ul>
-                <i class="fa-sharp fa-solid fa-bars" onclick="openMenu()"></i>
-            </nav>
-            <div class="header-text">
-                <!-- <p>Musician / Artist / Programmer</p> -->
-                <h1>Hi! I'm <span>Peter.</span> <br>I make cool and weird art.</h1>
-            </div>
-        </div>
-    </div>
 
-    <!-- ========== ABOUT ============= -->
+  <!-- Full-screen background canvas — sits behind everything via z-index -->
+  <div id="bg" aria-hidden="true"></div>
 
-    <div id="about">
-        <div class="container">
-            <div class="row">
-                <div class="about-col-L">
-                    <img src="images/Headshotpg.jpg" alt="A headshot of Peter Liley">
-                </div>
-                <div class="about-col-R">
-                    <h2 class="subtitle">About</h2>
-                    <br>
-                    <p>Peter is a musician and artist based in Wellington, New Zealand. He has made a name for himself nationwide for his experimental, breathless saxophone performances and hypnotic compositions - written for performances, but also for film and as standalone albums. Peter also trained as a programmer, and creates audiovisual artwork that explores the intersections of art, culture and code.
-                </div>
-            </div>
-        </div>
-    </div>
+  <nav id="nav"></nav>
 
+  <!-- Corner identity badge -->
+  <div id="identity"></div>
 
+  <!-- Section panels are created dynamically by app.js from js/sections/index.js -->
+  <main id="app"></main>
 
-<!-- ================= WORK ==================== -->
+  <div id="modal" aria-hidden="true"></div>
 
-<div id="work">
-    <div class="container">
-        <!-- <h2 class="subtitle">Work</h2> -->
-        <div class="work-list">
-            <div onclick="location.href='pages/music/music.html';" style="cursor:pointer; background-image: url('images/score.png')">
-                <h3>Music</h3>
-            </div>
-            <div onclick="location.href='pages/performance/performance.html';" style="cursor:pointer; background-image: url('images/Pyramid-Performance.png')">
-                <h3>Performances</h3>
-            </div>
-            <div onclick="location.href='pages/artwork/artwork.html';" style="cursor:pointer; background-image: url('images/art_deco.gif')">
-                <h3>Artwork</h3>
-            </div>
-            <div onclick="location.href='pages/installations/installations.html';" style="cursor:pointer; background-image: url('images/installation.png')">
-                <h3>Installations</h3>
-            </div>
-        </div>
-    </div>
-</div>
+  <!-- Mobile close button — shown in place of the ff-debug-toggle when a panel is open -->
+  <button id="mobile-close" aria-label="Close panel">✕</button>
 
-<!-- =============== CONTACT ==================== -->
-
-<script src="https://kit.fontawesome.com/3e56f55113.js" crossorigin="anonymous"></script>
-
-
-<div id="contact">
-    <div class="container">
-        <div class="row">
-            <div class="contact-left">
-                <h2 class="subtitle">Contact me:</h2>
-                <div class="social-icons">
-                    <a href="https://www.instagram.com/peterlileymusic/"><i class="fa-brands fa-instagram"></i></a>
-                    <a href="https://twitter.com/LileyPeter"><i class="fa-brands fa-twitter"></i></a>
-                    <a href="https://genredefying.bandcamp.com/album/unfathomed-waters"><i class="fa-brands fa-bandcamp"></i></a>
-                    <a href="https://open.spotify.com/artist/0ca9kLfuMuJuUPx1y86o0E"><i class="fa-brands fa-spotify"></i></a>
-                    <a href="https://github.com/petlil"><i class="fa-brands fa-github"></i></a>
-                </div>
-            </div> 
-            <div class="contact-right">
-                <form action="">
-                    <input type="text" name="Name" placeholder="name" required>
-                    <input type="email" name="email" placeholder="email@address.com">
-                    <textarea name="Message" rows="6" placeholder="message"></textarea>
-                    <button type="submit" class="btn">Submit</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="copyright">
-     <p>Copyright <i class="fa-regular fa-copyright"></i> Peter Liley 2023</p>
-     <br>
-     <p>Website created by me <i class="fa-solid fa-heart"></i> and hosted <a href="https://github.com/petlil/petlil.github.io">on GitHub</a></p>
-</div>
-
-<script type="text/javascript" src="drag.js"></script>
-
-<script>
-    let sidemenu = document.getElementById("sidemenu");
-    function openMenu() {
-        sidemenu.style.right = "0";
-    }
-    function closeMenu() {
-        sidemenu.style.right = "-150px"
-    }
-</script>
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>

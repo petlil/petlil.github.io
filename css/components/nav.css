@@ -1,0 +1,65 @@
+/* ============================================================
+   NAV.CSS — centred section-name navigation
+   ============================================================ */
+
+/* Left-side nav column — vertically centred, hugs the left edge */
+#nav {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: clamp(5rem, 12vw, 9rem);
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Vertical stack of section names */
+.section-nav {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2.4rem;
+  list-style: none;
+}
+
+/* Each section name */
+.section-nav__item {
+  all: unset;
+  cursor: pointer;
+
+  font-family: 'Cormorant Garant', Georgia, serif;
+  font-size: clamp(1rem, 1.6vw, 1.5rem);
+  font-weight: 300;
+  font-style: normal;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  line-height: 1.55;
+
+  color: var(--color-fg);
+  opacity: 0.35;
+
+  /* Vertical stretch gives the tall, elegant quality */
+  transform: scaleY(2.2);
+  transform-origin: center left;
+
+  transition:
+    opacity   350ms cubic-bezier(0.4, 0, 0.2, 1),
+    transform 500ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.section-nav__item:hover {
+  opacity: 1;
+  transform: scaleY(2.35);
+}
+
+.section-nav__item.is-active {
+  opacity: 1;
+  font-style: italic;
+  color: var(--color-accent);
+  transform: scaleY(2.2) translateX(0.7rem);
+}
