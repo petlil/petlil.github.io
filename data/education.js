@@ -16,7 +16,7 @@ const education = [
     id: 'wellington-music-centre',
     title: 'Wellington Music Centre',
     meta: 'Music Director',
-    image: 'assets/images/teaching/wmc_graphic.png',
+    image: 'assets/images/education/wmc_graphic.png',
     description: `
       <p>As Music Director of Wellington Music Centre, Peter leads one of Wellington's
       most active community music organisations, overseeing programmes that provide
@@ -27,18 +27,10 @@ const education = [
       systemic improvements in music education, advocating for structures that better serve
       the full diversity of students and communities in Aotearoa.</p>
     `,
-    photo: 'assets/images/teaching/wmc_teaching.jpg',
+    photo: 'assets/images/education/wmc_teaching.jpg',
     links: [
       { label: 'wellingtonmusiccentre.org.nz', href: 'https://www.wellingtonmusiccentre.org.nz/' },
     ],
-  },
-  {
-    id: 'teaching-private',
-    title: 'Private Tuition',
-    meta: 'Saxophone · Composition · Music Technology',
-    description: `
-      <p>Peter teaches saxophone, composition, and music technology to students of all levels.</p>
-    `,
   },
 ];
 

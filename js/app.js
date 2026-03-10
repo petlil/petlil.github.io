@@ -63,4 +63,20 @@ document.addEventListener('DOMContentLoaded', () => {
     );
     if (!inUI) Router.navigate('');
   });
+
+  // 8. Global scroll redirect — wheel anywhere on the page scrolls the active
+  //    section panel, so the user doesn't need to hover directly over it.
+  //    If the cursor is already inside the active section, native scroll handles it.
+  document.addEventListener('wheel', (e) => {
+    const activeSection = document.querySelector('.section.is-active');
+    if (!activeSection) return;
+    if (e.target.closest('.section.is-active')) return;
+
+    // Normalise deltaY to pixels (deltaMode: 0=px, 1=lines, 2=pages)
+    let delta = e.deltaY;
+    if (e.deltaMode === 1) delta *= 16;
+    if (e.deltaMode === 2) delta *= activeSection.clientHeight;
+
+    activeSection.scrollBy({ top: delta, left: 0 });
+  }, { passive: true });
 });
