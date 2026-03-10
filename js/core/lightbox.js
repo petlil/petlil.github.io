@@ -8,7 +8,11 @@
 const modal = document.getElementById('modal');
 let listenerAttached = false;
 
-function close() {
+export function isLightboxOpen() {
+  return modal.classList.contains('is-open');
+}
+
+export function closeLightbox() {
   modal.classList.remove('is-open');
   modal.addEventListener('transitionend', () => { modal.innerHTML = ''; }, { once: true });
 }
@@ -23,7 +27,7 @@ function close() {
  */
 export function initLightbox(containerEl, selector = 'img') {
   if (!listenerAttached) {
-    modal.addEventListener('click', close);
+    modal.addEventListener('click', closeLightbox);
     listenerAttached = true;
   }
 

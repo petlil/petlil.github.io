@@ -6,7 +6,7 @@
   position: fixed;
   top: 1.5rem;
   left: 1.5rem;
-  z-index: 50;
+  z-index: 15; /* below section panel (z-index: 20) so panel sits on top */
 }
 
 .identity {

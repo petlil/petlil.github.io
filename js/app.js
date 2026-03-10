@@ -5,12 +5,13 @@
  * particle array (flowField.particles) or live params (flowField.params).
  */
 
-import { Router }        from './core/Router.js';
-import { EventBus }      from './core/EventBus.js';
-import { FlowField }     from './sketches/FlowField.js';
-import { SectionNav }    from './components/SectionNav.js';
-import { Identity }      from './components/Identity.js';
-import { SECTIONS }      from './sections/index.js';
+import { Router }                        from './core/Router.js';
+import { EventBus }                      from './core/EventBus.js';
+import { FlowField }                     from './sketches/FlowField.js';
+import { SectionNav }                    from './components/SectionNav.js';
+import { Identity }                      from './components/Identity.js';
+import { SECTIONS }                      from './sections/index.js';
+import { closeLightbox, isLightboxOpen } from './core/lightbox.js';
 
 /** Shared instances — importable anywhere they're needed. */
 export let flowField;
@@ -49,6 +50,8 @@ document.addEventListener('DOMContentLoaded', () => {
     sectionEls.forEach(el => {
       el.classList.toggle('is-active', el.dataset.slug === slug);
     });
+    // Drive mobile close button visibility via body class
+    document.body.classList.toggle('panel-open', !!slug);
   });
 
   // 6. Router
@@ -59,10 +62,39 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', (e) => {
     if (!Router.current()) return;
     const inUI = e.target.closest(
-      '#app, #nav, #modal, #player, #identity, .ff-debug, .ff-debug-toggle'
+      '#app, #nav, #modal, #player, #identity, .ff-debug, .ff-debug-toggle, #mobile-close'
     );
     if (!inUI) Router.navigate('');
   });
+
+  // 8b. Mobile close button — dismiss lightbox first if one is open,
+  //     otherwise close the section panel.
+  document.getElementById('mobile-close').addEventListener('click', () => {
+    if (isLightboxOpen()) {
+      closeLightbox();
+    } else {
+      Router.navigate('');
+    }
+  });
+
+  // 8c. Swipe right on the panel to close it (or dismiss an open lightbox)
+  let swipeTouchStartX = 0;
+  let swipeTouchStartY = 0;
+  document.addEventListener('touchstart', (e) => {
+    swipeTouchStartX = e.touches[0].clientX;
+    swipeTouchStartY = e.touches[0].clientY;
+  }, { passive: true });
+  document.addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].clientX - swipeTouchStartX;
+    const dy = e.changedTouches[0].clientY - swipeTouchStartY;
+    const isRightSwipe = dx > 60 && Math.abs(dx) > Math.abs(dy);
+    if (!isRightSwipe) return;
+    if (isLightboxOpen()) {
+      closeLightbox();
+    } else if (Router.current()) {
+      Router.navigate('');
+    }
+  }, { passive: true });
 
   // 8. Global scroll redirect — wheel anywhere on the page scrolls the active
   //    section panel, so the user doesn't need to hover directly over it.
@@ -79,4 +111,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
     activeSection.scrollBy({ top: delta, left: 0 });
   }, { passive: true });
+
 });

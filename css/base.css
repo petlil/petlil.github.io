@@ -30,6 +30,10 @@
   --space-16: 4rem;
   --space-24: 6rem;
 
+  /* Layout */
+  --section-width: 500px;
+  --hero-aspect:   1.2;
+
   /* Motion */
   --duration-fast:   150ms;
   --duration-normal: 300ms;

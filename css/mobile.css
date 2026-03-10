@@ -1,0 +1,82 @@
+/* ============================================================
+   MOBILE.CSS — mobile-specific overrides
+   All mobile rules live here. Loaded last so they cascade
+   cleanly over the desktop styles.
+   ============================================================ */
+
+/* ── Mobile close button — hidden everywhere by default ── */
+
+#mobile-close {
+  display: none;
+}
+
+@media (max-width: 473px) { /* widest iPhone (430px) + 10% */
+
+  /* ── Nav: anchor to right edge, right-aligned, thumb-friendly ── */
+
+  #nav {
+    left:            auto;
+    right:           0;
+    justify-content: flex-end;
+    padding-left:    0;
+    padding-right:   1.5rem;
+  }
+
+  .section-nav {
+    align-items: flex-end;
+  }
+
+  /* Flip transform-origin so scaleY stretches from the right */
+  .section-nav__item {
+    transform-origin: center right;
+  }
+
+  .section-nav__item:hover {
+    transform-origin: center right;
+  }
+
+  .section-nav__item.is-active {
+    /* Nudge left (toward canvas) instead of right */
+    transform:        scaleY(2.2) translateX(-0.7rem);
+    transform-origin: center right;
+  }
+
+  /* ── Close button: replaces ff-debug-toggle when a panel is open ── */
+
+  .panel-open #mobile-close {
+    display:         flex;
+    align-items:     center;
+    justify-content: center;
+
+    position:  fixed;
+    top:       1.25rem;
+    right:     1.25rem;
+    z-index:   9999;
+
+    width:  1.75rem;
+    height: 1.75rem;
+
+    font-size:     1rem;
+    border-radius: 50%;
+    border:        1px solid rgba(255, 255, 255, 0.12);
+    background:    rgba(0, 0, 0, 0.5);
+    color:         rgba(255, 255, 255, 0.7);
+    cursor:        pointer;
+
+    backdrop-filter:         blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    transition: color 150ms, border-color 150ms, background 150ms;
+  }
+
+  .panel-open #mobile-close:hover {
+    color:        rgba(255, 255, 255, 1);
+    border-color: rgba(255, 255, 255, 0.35);
+    background:   rgba(0, 0, 0, 0.7);
+  }
+
+  /* Hide the p5 debug toggle while a panel is open */
+  .panel-open .ff-debug-toggle {
+    display: none;
+  }
+
+}

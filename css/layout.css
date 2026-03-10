@@ -30,7 +30,8 @@
   top: 0;
   bottom: 0;
   right: 0;
-  width: 55%;
+  width: var(--section-width);
+  max-width: 100%;
   z-index: 20;
   pointer-events: auto;
   overflow-y: auto;

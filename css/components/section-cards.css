@@ -106,7 +106,7 @@
 /* ── art: collection card ── */
 
 .card--collection .card__image {
-  max-height: 260px;
+  aspect-ratio: var(--hero-aspect);
   object-fit: cover;
 }
 
@@ -167,7 +167,7 @@
 .card--album .card__album-cover {
   display: block;
   width: 100%;
-  max-height: 240px;
+  aspect-ratio: var(--hero-aspect);
   object-fit: cover;
   cursor: zoom-in;
   transition: opacity 180ms;
@@ -273,7 +273,7 @@
 .card__hero {
   display: block;
   width: 100%;
-  max-height: 300px;
+  aspect-ratio: var(--hero-aspect);
   object-fit: cover;
   object-position: center top;
 }
