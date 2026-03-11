@@ -23,5 +23,4 @@ export const SECTIONS = [
   { slug: 'art',       label: 'Art',       side: 'right', Component: ArtSection       },
   { slug: 'education', label: 'Education', side: 'right', Component: EducationSection },
   { slug: 'projects',  label: 'Projects',  side: 'right', Component: ProjectsSection  },
-  { slug: 'extra',     label: 'Extra',     side: 'right', Component: ExtraSection     },
 ];
