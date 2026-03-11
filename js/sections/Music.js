@@ -49,7 +49,7 @@ function renderAlbum(album) {
 
   return `
     <article class="card card--album" data-id="${album.id}">
-      <img class="card__album-cover" src="${album.cover}" alt="${album.title}">
+      <img class="card__album-cover" src="${album.cover}" alt="${album.title}" loading="lazy">
       <div class="card__content">
         <h2 class="card__title">${album.title}</h2>
         ${album.description ? `<p class="card__meta">${album.description}</p>` : ''}
