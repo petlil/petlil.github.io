@@ -1,6 +1,6 @@
 import { Component }    from '../core/Component.js';
 import { initLightbox } from '../core/lightbox.js';
-import albums, { videos } from '../../data/music.js';
+import music from '../../data/music.js';
 
 function formatTime(secs) {
   if (!isFinite(secs)) return '0:00';
@@ -13,10 +13,6 @@ function renderVideo(item) {
   const meta = item.meta ? `<p class="card__meta">${item.meta}</p>` : '';
   return `
     <article class="card" data-id="${item.id}">
-      <div class="card__content">
-        <h2 class="card__title">${item.title}</h2>
-        ${meta}
-      </div>
       <div class="card__video">
         <iframe
           src="${item.videoSrc}"
@@ -25,6 +21,10 @@ function renderVideo(item) {
           loading="lazy"
           title="${item.title}"
         ></iframe>
+      </div>
+      <div class="card__content">
+        <h2 class="card__title">${item.title}</h2>
+        ${meta}
       </div>
     </article>
   `;
@@ -122,10 +122,7 @@ function wirePlayer(player) {
 
 export class MusicSection extends Component {
   render() {
-    return [
-      ...videos.map(renderVideo),
-      ...albums.map(renderAlbum),
-    ].join('');
+    return music.map(i => i.type === 'video' ? renderVideo(i) : renderAlbum(i)).join('');
   }
 
   onMount() {

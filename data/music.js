@@ -1,18 +1,11 @@
 /**
  * data/music.js — Self-hosted albums and video performances for the Music section.
+ * Items are rendered in array order.
  */
 
-export const videos = [
+const music = [
   {
-    id: 'pattern-7',
-    title: 'Pattern 7',
-    meta: 'Live performance · Wellington Cathedral of St Paul, Feb 2022',
-    videoSrc: 'https://www.youtube.com/embed/Un6ExdGocHA?enablejsapi=1',
-  },
-];
-
-const albums = [
-  {
+    type: 'album',
     id: 'vastness-vastness',
     title: 'Vastness Vastness',
     description: 'A collection of works for voice and electronics.',
@@ -23,6 +16,14 @@ const albums = [
     ],
   },
   {
+    type: 'video',
+    id: 'pattern-7',
+    title: 'Pattern 7',
+    meta: 'Live performance · Wellington Cathedral of St Paul, Feb 2022',
+    videoSrc: 'https://www.youtube.com/embed/Un6ExdGocHA?enablejsapi=1',
+  },
+  {
+    type: 'album',
     id: 'unfathomed-waters',
     title: 'Unfathomed Waters',
     description: 'A collaborative album with Jack Woodbury.',
@@ -39,6 +40,7 @@ const albums = [
     ],
   },
   {
+    type: 'album',
     id: 'bostrom-scenario',
     title: 'The Bostrom Scenario',
     description: 'Original motion picture soundtrack.',
@@ -60,4 +62,4 @@ const albums = [
   },
 ];
 
-export default albums;
+export default music;
