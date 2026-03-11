@@ -81,18 +81,93 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 8c. Swipe right on the panel to close it (or dismiss an open lightbox)
-  let swipeTouchStartX = 0;
-  let swipeTouchStartY = 0;
+  // 8c. Touch gestures: background swipe-to-close + panel drag-to-close
+  //
+  // Panel drag-to-close: the active panel follows the finger horizontally.
+  // Releasing past 50% of the panel width closes it; releasing before springs back.
+  // Background swipe-to-close still works for touches outside the panel.
+
+  let touchStartX       = 0, touchStartY = 0;
+  let touchInScrollable = false;  // inside .card__gallery — excluded from both gestures
+  let touchInSection    = false;  // inside active section — drag handles it, not swipe
+
+  // Drag-to-close state
+  let dcDirection = null;  // 'h' | 'v' | null — committed after DC_DIR_THRESHOLD px
+  let dcDragging  = false; // true once we're in a rightward horizontal drag
+
+  const DC_DIR_THRESHOLD = 8;   // px of movement before committing to a direction
+  const DC_CLOSE_RATIO   = 0.5; // fraction of panel width that triggers close
+
   document.addEventListener('touchstart', (e) => {
-    swipeTouchStartX = e.touches[0].clientX;
-    swipeTouchStartY = e.touches[0].clientY;
+    touchStartX       = e.touches[0].clientX;
+    touchStartY       = e.touches[0].clientY;
+    touchInScrollable = !!e.target.closest('.card__gallery');
+    touchInSection    = !!e.target.closest('.section.is-active');
+    dcDirection       = null;
+    dcDragging        = false;
   }, { passive: true });
+
+  // Non-passive so we can preventDefault during horizontal panel drags
+  // (prevents vertical scroll fighting the horizontal drag)
+  document.addEventListener('touchmove', (e) => {
+    if (dcDirection === 'v') return;                      // committed to vertical — skip
+    if (!dcDragging && !touchInSection) return;           // not a panel touch — skip
+    if (!dcDragging && touchInScrollable) return;         // gallery touch — skip
+
+    const sec = document.querySelector('.section.is-active');
+    if (!sec) return;
+
+    const dx = e.touches[0].clientX - touchStartX;
+    const dy = e.touches[0].clientY - touchStartY;
+
+    // Commit to a direction once movement exceeds threshold
+    if (!dcDirection) {
+      if (Math.abs(dx) < DC_DIR_THRESHOLD && Math.abs(dy) < DC_DIR_THRESHOLD) return;
+      dcDirection = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+      if (dcDirection === 'v') return;
+    }
+
+    if (dx <= 0) return; // only track rightward movement
+
+    dcDragging = true;
+    e.preventDefault(); // block scroll while dragging the panel sideways
+    sec.style.transition = 'none';
+    sec.style.transform  = `translateX(${dx}px)`;
+  }, { passive: false });
+
   document.addEventListener('touchend', (e) => {
-    const dx = e.changedTouches[0].clientX - swipeTouchStartX;
-    const dy = e.changedTouches[0].clientY - swipeTouchStartY;
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    const dy = e.changedTouches[0].clientY - touchStartY;
+
+    // ── Panel drag-to-close ──────────────────────────────────────────────────
+    if (dcDragging) {
+      dcDragging = false;
+      const sec  = document.querySelector('.section.is-active');
+      if (sec) {
+        const panelW = sec.offsetWidth;
+        if (dx > panelW * DC_CLOSE_RATIO) {
+          // Animate the remaining distance out, then close via router
+          const pct      = Math.min(dx / panelW, 1);
+          const duration = Math.round((1 - pct) * 300); // shorter if nearly there
+          sec.style.transition = `transform ${duration}ms cubic-bezier(0.4, 0, 0.2, 1)`;
+          sec.style.transform  = 'translateX(100%)';
+          setTimeout(() => {
+            Router.navigate(''); // removes is-active; CSS now owns translateX(100%)
+            sec.style.transition = '';
+            sec.style.transform  = '';
+          }, duration);
+        } else {
+          // Spring back — restore CSS transition then clear inline transform
+          sec.style.transition = '';
+          sec.style.transform  = '';
+        }
+      }
+      return; // drag handled — skip swipe-to-close below
+    }
+
+    // ── Background swipe-to-close (touch started outside the panel) ──────────
     const isRightSwipe = dx > 60 && Math.abs(dx) > Math.abs(dy);
-    if (!isRightSwipe) return;
+    if (!isRightSwipe || touchInScrollable || touchInSection) return;
     if (isLightboxOpen()) {
       closeLightbox();
     } else if (Router.current()) {
