@@ -33,10 +33,18 @@ const SLIDER_DEFS = [
   { key: 'vectorAlpha',   label: 'Vectors',     min: 0,  max: 80,  step: 1, decimals: 0 },
 ];
 
+// ─── device-adaptive particle count ───────────────────────────────────────
+
+function defaultParticleCount() {
+  if (window.matchMedia('(pointer: coarse)').matches) return 150;
+  if (typeof navigator.hardwareConcurrency === 'number' && navigator.hardwareConcurrency <= 4) return 200;
+  return 500;
+}
+
 // ─── defaults ─────────────────────────────────────────────────────────────
 
 const DEFAULTS = {
-  particleCount: 500,
+  particleCount: defaultParticleCount(),
   noiseScale:    0.0028,
   noiseSpeed:    0.00035,
   particleSpeed: 4.7,
@@ -45,7 +53,7 @@ const DEFAULTS = {
   particleSize:  1.0,            // stroke weight in pixels
   particleColor: theme.particle, // [r, g, b] — set to any theme colour or custom
   contourAlpha:  15,              // opacity of iso-contour lines (0 = off)
-  contourLevels: 30,             // number of iso-value lines drawn
+  contourLevels: window.matchMedia('(pointer: coarse)').matches ? 15 : 30,
   vectorAlpha:   0,              // opacity of flow-direction tick marks (0 = off)
 };
 
@@ -88,10 +96,19 @@ export class FlowField {
   _initSketch() {
     this._sketch = new p5((p) => {
 
+      // Scratch vectors — preallocated once, reused every frame.
+      // Avoids creating ~30-60k short-lived p5.Vector objects per second,
+      // which would otherwise trigger frequent GC pauses.
+      let _force, _orbitForce;
+
       p.setup = () => {
         const cnv = p.createCanvas(p.windowWidth, p.windowHeight);
         cnv.style('display', 'block');
         p.background(...BG);
+        p.frameRate(60); // cap at 60 fps — halves work on 120 Hz displays
+
+        _force      = p.createVector(0, 0);
+        _orbitForce = p.createVector(0, 0);
 
         // Seed the particle pool
         for (let i = 0; i < this.params.particleCount; i++) {
@@ -134,12 +151,12 @@ export class FlowField {
           const ny    = pt.pos.y * this.params.noiseScale;
           const angle = p.noise(nx, ny, this._t) * p.TWO_PI * 2;
 
-          const force = p.createVector(Math.cos(angle), Math.sin(angle));
-          force.mult(0.8);
-          pt.applyForce(force);
+          _force.set(Math.cos(angle), Math.sin(angle));
+          _force.mult(0.8);
+          pt.applyForce(_force);
 
           // Orbit particles around the selected nav element
-          const orb = this._orbit(p, pt.pos.x, pt.pos.y);
+          const orb = this._orbit(p, pt.pos.x, pt.pos.y, _orbitForce);
           if (orb) pt.applyForce(orb);
 
           pt.update();
@@ -185,7 +202,7 @@ export class FlowField {
    * @param {number} py - particle y
    * @returns {p5.Vector|null}
    */
-  _orbit(p, px, py) {
+  _orbit(p, px, py, out) {
     const r = this._hoverRect;
     if (!r) return null;
 
@@ -215,10 +232,8 @@ export class FlowField {
     // Tangential: strong near the word, fades to zero at OUTER
     const tangent = (1 - dist / OUTER) * 1.4;
 
-    return p.createVector(
-      nx * radial + tx * tangent,
-      ny * radial + ty * tangent,
-    );
+    out.set(nx * radial + tx * tangent, ny * radial + ty * tangent);
+    return out;
   }
 
   // ─── flow-direction vectors ───────────────────────────────────────────────
