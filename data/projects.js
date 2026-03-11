@@ -16,7 +16,7 @@ const projects = [
     id: 'the-temple',
     title: 'The Temple',
     meta: 'Band · Wellington',
-    image: 'assets/images/the-temple/temple_cover.png',
+    image: 'assets/images/the-temple/temple_cover.webp',
     description: `
       <p>Spiritual instrumental-electronic ceremonies in Pōneke NZ.</p>
     `,

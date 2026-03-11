@@ -10,7 +10,7 @@ import { Component } from '../core/Component.js';
 const INSTAGRAM_URL    = 'https://instagram.com/peterlileymusic';
 const INSTAGRAM_HANDLE = '@peterlileymusic';
 const DISPLAY_NAME     = 'Peter Liley';
-const AVATAR_SRC       = 'assets/images/profile image.jpg';
+const AVATAR_SRC       = 'assets/images/profile image.webp';
 
 export class Identity extends Component {
   render() {

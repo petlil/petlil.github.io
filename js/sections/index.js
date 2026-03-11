@@ -16,10 +16,12 @@ import { MusicSection }    from './Music.js';
 import { ArtSection }      from './Art.js';
 import { EducationSection } from './Education.js';
 import { ProjectsSection } from './Projects.js';
+import { ExtraSection }    from './Extra.js';
 
 export const SECTIONS = [
-  { slug: 'music',    label: 'Music',    side: 'right', Component: MusicSection    },
-  { slug: 'art',      label: 'Art',      side: 'right', Component: ArtSection      },
+  { slug: 'music',     label: 'Music',     side: 'right', Component: MusicSection     },
+  { slug: 'art',       label: 'Art',       side: 'right', Component: ArtSection       },
   { slug: 'education', label: 'Education', side: 'right', Component: EducationSection },
-  { slug: 'projects', label: 'Projects', side: 'right', Component: ProjectsSection },
+  { slug: 'projects',  label: 'Projects',  side: 'right', Component: ProjectsSection  },
+  { slug: 'extra',     label: 'Extra',     side: 'right', Component: ExtraSection     },
 ];
