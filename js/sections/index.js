@@ -16,7 +16,6 @@ import { MusicSection }    from './Music.js';
 import { ArtSection }      from './Art.js';
 import { EducationSection } from './Education.js';
 import { ProjectsSection } from './Projects.js';
-import { ExtraSection }    from './Extra.js';
 
 export const SECTIONS = [
   { slug: 'music',     label: 'Music',     side: 'right', Component: MusicSection     },

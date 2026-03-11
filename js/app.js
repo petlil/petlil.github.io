@@ -12,7 +12,7 @@ import { SectionNav }                    from './components/SectionNav.js';
 import { Identity }                      from './components/Identity.js';
 import { SECTIONS }                      from './sections/index.js';
 import { closeLightbox, isLightboxOpen } from './core/lightbox.js';
-import { initBenchmark }                from './core/benchmark.js'; // BENCHMARK — remove with benchmark.js
+// import { initBenchmark }                from './core/benchmark.js'; // BENCHMARK — remove with benchmark.js
 
 /** Shared instances — importable anywhere they're needed. */
 export let flowField;
@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
   Router.init();
 
   // BENCHMARK — remove this line along with the import above and benchmark.js
-  initBenchmark(flowField);
+  // initBenchmark(flowField);
 
   // 7. Click anywhere on the background (canvas / empty space) to close the
   //    open panel. Clicks inside any UI element are ignored.
