@@ -1,18 +1,9 @@
 /**
  * data/music.js — Self-hosted albums and video performances for the Music section.
+ * Items are rendered in array order.
  */
 
-export const videos = [
-  {
-    type: 'video',
-    id: 'pattern-7',
-    title: 'Pattern 7',
-    meta: 'Live performance · Wellington Cathedral of St Paul, Feb 2022',
-    videoSrc: 'https://www.youtube.com/embed/Un6ExdGocHA?enablejsapi=1',
-  },
-];
-
-const albums = [
+const music = [
   {
     type: 'album',
     id: 'vastness-vastness',
@@ -23,6 +14,13 @@ const albums = [
       { title: 'Vastness Vastness', file: 'assets/audio/Vastness%20Vastness/1_Vastness%20Vastness.m4a' },
       { title: 'Lullaby',           file: 'assets/audio/Vastness%20Vastness/2_Lullaby.m4a' },
     ],
+  },
+  {
+    type: 'video',
+    id: 'pattern-7',
+    title: 'Pattern 7',
+    meta: 'Live performance · Wellington Cathedral of St Paul, Feb 2022',
+    videoSrc: 'https://www.youtube.com/embed/Un6ExdGocHA?enablejsapi=1',
   },
   {
     type: 'album',
@@ -64,7 +62,4 @@ const albums = [
   },
 ];
 
-export default albums;
-
-// Ordered for display: Vastness Vastness → Pattern 7 → Unfathomed Waters → The Bostrom Scenario
-export const music = [albums[0], videos[0], albums[1], albums[2]];
+export default music;

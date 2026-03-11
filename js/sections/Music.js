@@ -1,6 +1,6 @@
 import { Component }    from '../core/Component.js';
 import { initLightbox } from '../core/lightbox.js';
-import albums, { videos, music } from '../../data/music.js';
+import music from '../../data/music.js';
 
 function formatTime(secs) {
   if (!isFinite(secs)) return '0:00';
