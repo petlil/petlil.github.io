@@ -4,6 +4,7 @@
 
 export const videos = [
   {
+    type: 'video',
     id: 'pattern-7',
     title: 'Pattern 7',
     meta: 'Live performance · Wellington Cathedral of St Paul, Feb 2022',
@@ -13,6 +14,7 @@ export const videos = [
 
 const albums = [
   {
+    type: 'album',
     id: 'vastness-vastness',
     title: 'Vastness Vastness',
     description: 'A collection of works for voice and electronics.',
@@ -23,6 +25,7 @@ const albums = [
     ],
   },
   {
+    type: 'album',
     id: 'unfathomed-waters',
     title: 'Unfathomed Waters',
     description: 'A collaborative album with Jack Woodbury.',
@@ -39,6 +42,7 @@ const albums = [
     ],
   },
   {
+    type: 'album',
     id: 'bostrom-scenario',
     title: 'The Bostrom Scenario',
     description: 'Original motion picture soundtrack.',
@@ -61,3 +65,6 @@ const albums = [
 ];
 
 export default albums;
+
+// Ordered for display: Vastness Vastness → Pattern 7 → Unfathomed Waters → The Bostrom Scenario
+export const music = [albums[0], videos[0], albums[1], albums[2]];
