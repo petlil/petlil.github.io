@@ -1,205 +1,239 @@
 /**
  * FlowField.js
  *
- * Wraps a p5 sketch (instance mode) that renders a full-screen Perlin noise
- * flow field with particles.
+ * Full-screen Perlin noise flow field with particle animation.
+ * Wraps two p5.js instances (instance mode):
+ *   • Main canvas    — background fade, particle physics, rendering
+ *   • Overlay canvas — burst-curve debug graph (transparent, no trail fade)
  *
  * Usage:
  *   const ff = new FlowField(document.querySelector('#bg'));
  *
- * The `particles` array and `params` object are public — other components
- * may read particle positions or temporarily mutate params.
+ * Public surface:
+ *   ff.particles              — live particle array (read; don't replace the ref)
+ *   ff.params                 — live parameter object; mutate freely each frame
+ *   ff.setHoverRect(rect|null) — attach an orbit attractor to a DOM element
+ *   ff.toggleDebug()           — show / hide the debug panel + curve graph
+ *   ff.destroy()               — tear down canvases, panel, and all listeners
  *
- * Debug panel: press  `  (backtick) to toggle sliders for all parameters.
+ * Debug panel: press ` (backtick) or click the ⚙ button to toggle.
  */
 
 import { Particle } from './Particle.js';
 import { theme }    from '../core/theme.js';
 
-// Derived from theme — local alias for readability
+// ─── module constants ──────────────────────────────────────────────────────
+
+/** Background colour — seeds and trail-fades the main canvas. */
 const BG = theme.bg;
 
-// ─── burst phase constants ─────────────────────────────────────────────────
-// A click/tap launches particles outward through three distinct phases:
-//   BURST  — pure outburst, strong drag, flowfield silenced
-//   FLOAT  — slows, drifts gently downward, flowfield barely audible
-//   RETURN — flowfield eases back to full strength
+/**
+ * Red tint applied to burst particles at the moment of impact.
+ * Lerps back toward particleColor over the float+return phases.
+ * @type {[number, number, number]}
+ */
+const BURST_COLOR = [220, 65, 45];
 
-const BURST_DUR  = 22;                           // frames — kept short so float begins while still decelerating
-const FLOAT_DUR  = 80;                           // frames
-const RETURN_DUR = 120;                          // frames
-const TOTAL_DUR  = BURST_DUR + FLOAT_DUR + RETURN_DUR;  // 222
+/**
+ * Gold fill colour for star-shaped burst particles.
+ * Lerps toward particleColor as the star shrinks back.
+ * @type {[number, number, number]}
+ */
+const STAR_COLOR = [255, 195, 50];
 
-const FLOAT_END  = BURST_DUR + FLOAT_DUR;        // 102
-const MAX_DRIFT  = 0.06;                         // peak downward force in float phase
+// ─── easing helpers ────────────────────────────────────────────────────────
 
-/** Cubic smoothstep — clamps t to [0, 1]. */
+/** Cubic smoothstep — maps t ∈ [0, 1] to a smooth S-curve. Input is clamped. */
 function smoothstep(t) {
   const x = Math.max(0, Math.min(1, t));
   return x * x * (3 - 2 * x);
 }
 
-/** Linear interpolation. */
+/** Linear interpolation from a to b at blend factor t. */
 function lerp(a, b, t) { return a + (b - a) * t; }
 
-/** Red burst colour — particles tint to this on impact (trail + curve gradient). */
-const BURST_COLOR = [220, 65, 45];
-
-/** Gold star colour — drawn on burst particles while they are stars. */
-const STAR_COLOR  = [255, 195, 50];
-
 // ─── slider definitions ────────────────────────────────────────────────────
-// Each entry drives both the default params and the debug UI.
+//
+// Drives both the DEFAULTS object and the debug panel UI.
+// Entries with a `section` key insert a section-header row in the panel.
+// Entries with a `key` key define a live slider for that parameter.
 
 const SLIDER_DEFS = [
-  { key: 'noiseScale',      label: 'Noise scale',    min: 0.0005,  max: 0.012,  step: 0.0001,  decimals: 4 },
-  { key: 'noiseSpeed',      label: 'Noise speed',    min: 0.00005, max: 0.002,  step: 0.00005, decimals: 5 },
-  { key: 'particleSpeed',   label: 'Speed',          min: 0.5,     max: 12,     step: 0.1,     decimals: 1 },
-  { key: 'contourLevels',   label: 'Iso levels',     min: 2,       max: 24,     step: 1,       decimals: 0 },
-  // ── burst physics ─────────────────────────────────────────────────────────
+  { key: 'noiseScale',      label: 'Noise scale',    min: 0.0005, max: 0.012,  step: 0.0001,  decimals: 4 },
+  { key: 'noiseSpeed',      label: 'Noise speed',    min: 0.00005,max: 0.002,  step: 0.00005, decimals: 5 },
+  { key: 'particleSpeed',   label: 'Speed',          min: 0.5,    max: 12,     step: 0.1,     decimals: 1 },
+  { key: 'contourLevels',   label: 'Iso levels',     min: 2,      max: 24,     step: 1,       decimals: 0 },
   { section: 'Burst physics' },
-  { key: 'repulseRadius',   label: 'Radius',         min: 10,      max: 500,    step: 5,       decimals: 0 },
-  { key: 'repulseStrength', label: 'Strength',       min: 0,       max: 200,    step: 0.5,     decimals: 1 },
-  { key: 'burstDur',        label: 'Burst frames',   min: 5,       max: 60,     step: 1,       decimals: 0 },
-  { key: 'floatDur',        label: 'Float frames',   min: 10,      max: 200,    step: 5,       decimals: 0 },
-  { key: 'returnDur',       label: 'Return frames',  min: 20,      max: 300,    step: 5,       decimals: 0 },
-  { key: 'burstDrag',       label: 'Burst drag',     min: 0.75,    max: 0.99,   step: 0.01,    decimals: 2 },
-  { key: 'floatDrag',       label: 'Float drag',     min: 0.90,    max: 1.00,   step: 0.005,   decimals: 3 },
-  { key: 'driftStrength',   label: 'Drift strength', min: 0,       max: 0.30,   step: 0.005,   decimals: 3 },
+  { key: 'repulseRadius',   label: 'Radius',         min: 10,     max: 500,    step: 5,       decimals: 0 },
+  { key: 'repulseStrength', label: 'Strength',       min: 0,      max: 200,    step: 0.5,     decimals: 1 },
+  { key: 'burstDur',        label: 'Burst frames',   min: 5,      max: 60,     step: 1,       decimals: 0 },
+  { key: 'floatDur',        label: 'Float frames',   min: 10,     max: 200,    step: 5,       decimals: 0 },
+  { key: 'returnDur',       label: 'Return frames',  min: 20,     max: 300,    step: 5,       decimals: 0 },
+  { key: 'burstDrag',       label: 'Burst drag',     min: 0.75,   max: 0.99,   step: 0.01,    decimals: 2 },
+  { key: 'floatDrag',       label: 'Float drag',     min: 0.90,   max: 1.00,   step: 0.005,   decimals: 3 },
+  { key: 'driftStrength',   label: 'Drift strength', min: 0,      max: 0.30,   step: 0.005,   decimals: 3 },
 ];
 
 // ─── defaults ─────────────────────────────────────────────────────────────
+//
+// All burst-phase durations live here and are read live from this.params,
+// so debug-panel sliders take effect immediately without a restart.
 
 const DEFAULTS = {
+  // ── flow field ────────────────────────────────────────────────────────────
   particleCount:   500,
-  noiseScale:      0.0028,
-  noiseSpeed:      0.00035,
-  particleSpeed:   4.7,
-  trailAlpha:      60,             // background fade per frame — lower = longer trails
-  particleAlpha:   140,            // particle stroke alpha (0–255)
-  particleSize:    1.0,            // stroke weight in pixels
-  particleColor:   theme.particle, // [r, g, b] — set to any theme colour or custom
-  contourAlpha:    15,             // opacity of iso-contour lines (0 = off)
-  contourLevels:   30,             // number of iso-value lines drawn
-  vectorAlpha:     0,              // opacity of flow-direction tick marks (0 = off)
-  repulseRadius:   180,            // click/tap explosion radius in pixels
-  repulseStrength: 10,             // click/tap burst impulse strength
-  showCurves:      false,          // debug: draw burst-phase transition curves
-  // ── burst physics ──────────────────────────────────────────────────────────
-  burstDur:        22,             // frames — outburst phase
-  floatDur:        80,             // frames — float / drift phase
-  returnDur:       120,            // frames — flow-field return phase
-  burstDrag:       0.88,           // initial drag during burst (increases to +0.06 by end)
-  floatDrag:       0.96,           // initial drag during float (increases to +0.03 via smoothstep)
-  driftStrength:   0.06,           // peak downward drift force during float
+  noiseScale:      0.0028,   // spatial frequency of the Perlin noise field
+  noiseSpeed:      0.00035,  // how fast the field evolves over time
+  particleSpeed:   4.7,      // max speed enforced by Particle.update() via vel.limit()
+  trailAlpha:      60,       // background-overlay alpha per frame — lower = longer trails
+  particleAlpha:   140,      // particle stroke alpha (0–255)
+  particleSize:    1.0,      // stroke weight in pixels
+  particleColor:   theme.particle, // [r, g, b] — single source of truth for teal particle colour
+  contourAlpha:    15,       // iso-contour line opacity (0 = off)
+  contourLevels:   30,       // number of iso-value contour lines drawn
+  vectorAlpha:     0,        // flow-direction tick-mark opacity (0 = off)
+
+  // ── click / tap burst ─────────────────────────────────────────────────────
+  repulseRadius:   180,      // explosion radius in pixels
+  repulseStrength: 20,       // outward impulse magnitude
+
+  // ── burst animation phases ─────────────────────────────────────────────────
+  //   BURST  (burstDur  frames) — outward blast; strong drag; flow field off
+  //   FLOAT  (floatDur  frames) — momentum carries; gentle drift; field barely on
+  //   RETURN (returnDur frames) — flow field eases back to full strength
+  burstDur:        22,       // short so float begins while still decelerating
+  floatDur:        80,
+  returnDur:       120,
+  burstDrag:       0.92,     // base drag during burst (ramps to +0.06 by end)
+  floatDrag:       0.96,     // base drag during float (ramps to +0.03 via smoothstep)
+  driftStrength:   0.10,     // peak downward force during float phase
+
+  // ── internal / debug ──────────────────────────────────────────────────────
+  showCurves:      false,    // controlled by panel visibility; not exposed as a slider
 };
 
-// ─── FlowField ────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+//  FlowField
+// ══════════════════════════════════════════════════════════════════════════════
 
 export class FlowField {
   /**
-   * @param {HTMLElement} containerEl - element to mount the canvas into
-   * @param {object}      [options]   - override any DEFAULTS
+   * @param {HTMLElement} containerEl - element to mount both p5 canvases into
+   * @param {object}      [options]   - override any key from DEFAULTS
    */
   constructor(containerEl, options = {}) {
     this.container = containerEl;
 
-    /** Live params — mutate at will; the sketch reads these every frame. */
+    /** Live parameters — mutate freely; the sketch reads these every frame. */
     this.params = { ...DEFAULTS, ...options };
 
     /**
-     * Particle collection. Other components may iterate this array to read
-     * positions, velocities, etc. Do not replace the array reference — only
-     * mutate its contents.
+     * Live particle array. Other components may read positions/velocities.
+     * Do NOT replace this reference — only mutate its contents.
+     * @type {Particle[]}
      */
     this.particles = [];
 
-    this._t             = 0;       // noise time offset (advances with noiseSpeed)
-    this._frame         = 0;       // global frame counter
-    this._sketch        = null;
-    this._debugPanel    = null;
-    this._debugVisible  = false;
-    this._hoverRect     = null;    // DOMRect of the currently selected nav item
-    this._latestBurstAt  = -9999;  // frame when the last burst was fired
-    this._curveSamples   = null;   // lazy-built; rebuild if BURST_DUR changes
-    this._graphScale     = 1.0;   // resize handle scale (0.5 – 2.5)
-    this._graphDragging  = false;
-    this._dragStartX     = 0;
-    this._dragStartY     = 0;
-    this._dragStartScale = 1.0;
-    this._overlaySketch  = null;  // separate p5 instance for the curve overlay
+    // ── private state ──────────────────────────────────────────────────────
+    this._t              = 0;      // Perlin noise time offset (advances each frame)
+    this._frame          = 0;      // global frame counter
+    this._sketch         = null;   // main p5 instance
+    this._overlaySketch  = null;   // curve-graph p5 instance (transparent canvas)
+    this._debugPanel     = null;   // debug panel DOM element
+    this._debugToggleBtn = null;   // always-visible ⚙ button
+    this._debugVisible   = false;
+    this._hoverRect      = null;   // DOMRect of hovered nav item (orbit attractor)
+    this._latestBurstAt  = -9999;  // _frame value when last burst fired (drives playhead)
 
+    // ── debug curve graph ──────────────────────────────────────────────────
+    this._curveSamples    = null;  // cached Float32Arrays; rebuilt on param change
+    this._curveSamplesKey = '';    // stringified burst params — cache invalidation key
+    this._graphScale      = 1.0;  // graph panel scale (0.5 – 2.5)
+    this._graphDragging   = false;
+    this._dragStartX      = 0;
+    this._dragStartY      = 0;
+    this._dragStartScale  = 1.0;
+
+    // ── init ───────────────────────────────────────────────────────────────
     this._initSketch();
     this._initOverlaySketch();
     this._initDebugPanel();
 
-    // Global key listener so the toggle works regardless of canvas focus
+    // Backtick toggle works regardless of which element has focus
     this._onKey = (e) => { if (e.key === '`') this.toggleDebug(); };
     window.addEventListener('keydown', this._onKey);
+
+    // Auto-close debug panel when the user navigates to a site section
+    this._onHashChange = () => { if (this._debugVisible) this.toggleDebug(); };
+    window.addEventListener('hashchange', this._onHashChange);
   }
 
-  // ─── burst physics ─────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+  //  Burst physics
+  // ══════════════════════════════════════════════════════════════════════════
 
   /**
-   * Returns per-frame physics parameters for a burst particle at `frame`.
+   * Returns per-frame physics values for a burst particle at `frame`.
+   *
+   * Phase timeline (durations read from live params so sliders apply immediately):
+   *   [0, burstDur)        → BURST  — outburst; drag rises; flow field silent
+   *   [burstDur, floatEnd) → FLOAT  — momentum + downward drift; field whisper
+   *   [floatEnd, totalDur) → RETURN — flow field eases back to full weight
+   *   frame >= totalDur    → null   — burst fully complete; clear burstState
+   *
    * @param {number} frame - frames elapsed since burst was applied
-   * @returns {{ phase: string, ffWeight: number, drag: number, drift: number } | null}
-   *   null signals the burst has fully completed.
+   * @returns {{ phase: string, ffWeight: number, drag: number, drift: number, colorT: number } | null}
    */
   _burstPhysics(frame) {
-    // Derive phase boundaries from live params so sliders take effect immediately
-    const BURST_DUR  = this.params.burstDur;
-    const FLOAT_DUR  = this.params.floatDur;
-    const RETURN_DUR = this.params.returnDur;
-    const TOTAL_DUR  = BURST_DUR + FLOAT_DUR + RETURN_DUR;
-    const FLOAT_END  = BURST_DUR + FLOAT_DUR;
-    const MAX_DRIFT  = this.params.driftStrength;
-    const BURST_DRAG = this.params.burstDrag;
-    const FLOAT_DRAG = this.params.floatDrag;
+    const { burstDur, floatDur, returnDur, driftStrength, burstDrag, floatDrag } = this.params;
+    const floatEnd = burstDur + floatDur;
+    const totalDur = floatEnd + returnDur;
 
-    if (frame >= TOTAL_DUR) return null;
+    if (frame >= totalDur) return null;
 
-    if (frame < BURST_DUR) {
-      // Phase 1 — pure outburst
-      const t = frame / BURST_DUR;
-      return {
-        phase    : 'burst',
-        ffWeight : 0,
-        drag     : BURST_DRAG + t * 0.06,
-        drift    : 0,
-        colorT   : 0,
-      };
+    if (frame < burstDur) {
+      // BURST — pure outward blast; drag increases linearly to ease into float
+      const t = frame / burstDur;
+      return { phase: 'burst', ffWeight: 0, drag: burstDrag + t * 0.06, drift: 0, colorT: 0 };
     }
 
-    if (frame < FLOAT_END) {
-      // Phase 2 — floating
-      const t = (frame - BURST_DUR) / FLOAT_DUR;
+    if (frame < floatEnd) {
+      // FLOAT — particle coasts with downward drift.
+      // sin offset (π×0.15) ensures drift starts at ~45% on frame 0 of this phase,
+      // avoiding the dead zone a plain sin(t·π) would create at t=0.
+      const t = (frame - burstDur) / floatDur;
       return {
         phase    : 'float',
         ffWeight : 0.04,
-        drag     : FLOAT_DRAG + smoothstep(t) * 0.03,
-        drift    : MAX_DRIFT * Math.sin(t * Math.PI),
+        drag     : floatDrag + smoothstep(t) * 0.03,
+        drift    : driftStrength * Math.sin(t * Math.PI * 0.85 + Math.PI * 0.15),
         colorT   : smoothstep(t) * 0.35,
       };
     }
 
-    // Phase 3 — return
-    const t = (frame - FLOAT_END) / RETURN_DUR;
+    // RETURN — flow field eases back; drag = 1.0 so velocity isn't artificially clamped
+    const t  = (frame - floatEnd) / returnDur;
     const ss = smoothstep(t);
     return {
       phase    : 'return',
       ffWeight : 0.04 + ss * 0.96,
       drag     : 1.0,
       drift    : 0,
-      colorT   : 0.35 + ss * ss * 0.65,
+      colorT   : 0.35 + ss * ss * 0.65,  // accelerates toward teal near the end
     };
   }
 
   /**
-   * Kicks all particles within repulseRadius into burst state.
+   * Kicks all particles within repulseRadius outward from (cx, cy).
+   *
+   * A small per-particle randomisation (±14% strength, ±8° direction) makes
+   * the burst feel organic rather than perfectly radial. Phase durations are
+   * snapshotted on each particle so slider changes mid-burst don't glitch the
+   * ongoing animation.
+   *
    * @param {object} p  - p5 instance
-   * @param {number} cx - click x
-   * @param {number} cy - click y
+   * @param {number} cx - burst origin x
+   * @param {number} cy - burst origin y
    */
   _applyBurst(p, cx, cy) {
     const R = this.params.repulseRadius;
@@ -210,96 +244,129 @@ export class FlowField {
       const dx   = pt.pos.x - cx;
       const dy   = pt.pos.y - cy;
       const dist = Math.hypot(dx, dy);
-      if (dist < R && dist > 1) {
-        const scale  = S * (1 - dist / R);
-        // Set velocity directly — clean outburst, not additive
-        pt.vel.x     = (dx / dist) * scale;
-        pt.vel.y     = (dy / dist) * scale;
-        pt.acc.set(0, 0);              // discard any pending forces
-        pt.burstState = {
-          frame    : 0,
-          heading  : Math.atan2(dy, dx),          // lock star orientation to launch direction
-          burstDur : this.params.burstDur,
-          floatDur : this.params.floatDur,
-          returnDur: this.params.returnDur,
-        };
-      }
+      if (dist >= R || dist < 1) continue;
+
+      // Per-particle jitter for an organic look
+      const strengthMult = 1.0 + (Math.random() - 0.5) * 0.28;         // ±14%
+      const angleOffset  = (Math.random() - 0.5) * (Math.PI * 4 / 45); // ±8°
+
+      const cosA = Math.cos(angleOffset);
+      const sinA = Math.sin(angleOffset);
+      const ux   = dx / dist;                  // unit radial vector
+      const uy   = dy / dist;
+      const rx   = ux * cosA - uy * sinA;      // rotated outward direction
+      const ry   = ux * sinA + uy * cosA;
+
+      // Impulse falls off linearly with distance; replace velocity (not additive)
+      const speed  = S * (1 - dist / R) * strengthMult;
+      pt.vel.x     = rx * speed;
+      pt.vel.y     = ry * speed;
+      pt.acc.set(0, 0);  // discard any pending forces
+
+      // Snapshot: lock orientation + freeze durations so mid-burst slider
+      // changes don't glitch the star animation or colour transition.
+      pt.burstState = {
+        frame    : 0,
+        heading  : Math.atan2(ry, rx),       // star points toward launch direction
+        burstDur : this.params.burstDur,
+        floatDur : this.params.floatDur,
+        returnDur: this.params.returnDur,
+      };
     }
     this._latestBurstAt = this._frame;
   }
 
-  // ─── star rendering ───────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+  //  Star rendering
+  // ══════════════════════════════════════════════════════════════════════════
 
   /**
-   * Draws a 5-pointed star at `pt.pos`, sized and coloured from burst overrides.
-   * One point faces the direction of travel for a dynamic feel.
+   * Computes the normalised colour-blend progress (0 = gold, 1 = teal) for a
+   * star particle at a given frame. Uses snapshotted burstState durations so
+   * live param changes after a burst don't affect an ongoing animation.
+   *
+   * Mirrors the colorT arithmetic in _burstPhysics but is safe to call
+   * independently because it doesn't touch this.params.
+   *
+   * @param {number} frame - pt.burstState.frame
+   * @param {object} bs    - pt.burstState (burstDur / floatDur / returnDur)
+   * @returns {number} t ∈ [0, 1]
+   */
+  _starColorT(frame, bs) {
+    const floatEnd = bs.burstDur + bs.floatDur;
+    if (frame < bs.burstDur) return 0;
+    if (frame < floatEnd) {
+      return smoothstep((frame - bs.burstDur) / bs.floatDur) * 0.35;
+    }
+    const ss = smoothstep((frame - floatEnd) / bs.returnDur);
+    return 0.35 + ss * ss * 0.65;
+  }
+
+  /**
+   * Draws a 5-pointed star at pt.pos, oriented and coloured by burst state.
+   *
+   * Shape lifecycle:
+   *   BURST phase  — expands from a tiny gold circle (never invisible at frame 0)
+   *                  to a full star; inner radius morphs from R → 0.4·R
+   *   POST-BURST   — shrinks continuously; inner radius morphs back toward R
+   *                  during return phase (star → circle → dot)
+   *
+   * Colour transitions from STAR_COLOR (gold) → particleColor (teal) via _starColorT.
+   * Orientation is locked to the heading captured at burst time — no velocity tracking.
+   *
    * @param {object}   p  - p5 instance
-   * @param {Particle} pt - the particle to draw
+   * @param {Particle} pt - particle with a valid burstState
    */
   _drawStar(p, pt) {
-    // Use snapshotted durations so mid-burst param changes don't glitch the animation
-    const frame    = pt.burstState.frame;
-    const burstDur = pt.burstState.burstDur;
-    const floatEnd = burstDur + pt.burstState.floatDur;
-    const totalDur = floatEnd + pt.burstState.returnDur;
-    const returnDur = pt.burstState.returnDur;
+    const bs       = pt.burstState;
+    const frame    = bs.frame;
+    const floatEnd = bs.burstDur + bs.floatDur;
+    const totalDur = floatEnd + bs.returnDur;
 
     const size = pt._sizeOverride ?? this.params.particleSize;
-    const maxR = size * 4;   // peak outer radius
+    const maxR = size * 4;  // peak outer radius at end of burst phase
 
+    // ── outer (R) and inner (ri) radii ────────────────────────────────────
     let R, ri;
 
-    if (frame < burstDur) {
-      // Pop in: 0 → full over the burst phase
-      const expandT = smoothstep(frame / burstDur);
-      R  = maxR * expandT;
-      ri = R * 0.4;
+    if (frame < bs.burstDur) {
+      // Expand: tiny visible circle at frame 0 → full star by burst end
+      const t    = smoothstep(frame / bs.burstDur);
+      const minR = size * 1.5;              // starting radius — small but visible
+      R  = lerp(minR, maxR, t);
+      ri = R * lerp(1.0, 0.4, t);           // circle (ri = R) → star (ri = 0.4·R)
     } else {
-      // Shrink immediately after burst ends, through float + return
-      const shrinkT = smoothstep((frame - burstDur) / (totalDur - burstDur));
-      R  = maxR * (1 - shrinkT * 0.9);
-      // Morph star → circle during return phase
+      // Shrink: continuous from burst end through float and return
+      const t = smoothstep((frame - bs.burstDur) / (totalDur - bs.burstDur));
+      R  = maxR * (1 - t * 0.9);
+      // During return phase, morph inner radius back toward R (star → circle)
       const morphT = frame > floatEnd
-        ? smoothstep((frame - floatEnd) / returnDur)
+        ? smoothstep((frame - floatEnd) / bs.returnDur)
         : 0;
       ri = R * lerp(0.4, 1.0, morphT);
     }
 
-    // Compute colorT — mirrors _burstPhysics but uses snapshotted durations
-    let colorT = 0;
-    if (frame >= burstDur) {
-      if (frame < floatEnd) {
-        colorT = smoothstep((frame - burstDur) / pt.burstState.floatDur) * 0.35;
-      } else {
-        const tt = (frame - floatEnd) / returnDur;
-        const ss = smoothstep(tt);
-        colorT = 0.35 + ss * ss * 0.65;
-      }
-    }
-    // Lerp star from gold → particle colour as colorT approaches 1
-    const nc = this.params.particleColor;
+    // ── colour — gold → teal ──────────────────────────────────────────────
+    const colorT    = this._starColorT(frame, bs);
+    const nc        = this.params.particleColor;
     const drawColor = [
       Math.round(lerp(STAR_COLOR[0], nc[0], colorT)),
       Math.round(lerp(STAR_COLOR[1], nc[1], colorT)),
       Math.round(lerp(STAR_COLOR[2], nc[2], colorT)),
     ];
 
-    // Same fade envelope as Particle.draw()
+    // ── alpha — mirrors Particle.draw() fade envelope ─────────────────────
     const fadeIn  = Math.min(pt.age / 60, 1);
     const fadeOut = Math.min((pt.lifespan - pt.age) / 60, 1);
     const alpha   = Math.min(fadeIn, fadeOut) * this.params.particleAlpha;
 
-    // Locked orientation — captured at burst start, doesn't drift with velocity
-    const heading = pt.burstState.heading;
-
+    // ── draw — locked orientation from burst snapshot ─────────────────────
     p.push();
     p.translate(pt.pos.x, pt.pos.y);
-    p.rotate(heading);
-
+    p.rotate(bs.heading);
     p.fill(...drawColor, alpha * 0.7);
     p.stroke(...drawColor, alpha);
     p.strokeWeight(0.5);
-
     p.beginShape();
     for (let i = 0; i < 10; i++) {
       const a   = (i * Math.PI) / 5;
@@ -307,41 +374,43 @@ export class FlowField {
       p.vertex(Math.cos(a) * rad, Math.sin(a) * rad);
     }
     p.endShape(p.CLOSE);
-
     p.pop();
   }
 
-  // ─── p5 sketch ────────────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+  //  p5 sketch — main canvas
+  // ══════════════════════════════════════════════════════════════════════════
 
   _initSketch() {
     this._sketch = new p5((p) => {
 
+      // ── setup ─────────────────────────────────────────────────────────────
       p.setup = () => {
         const cnv = p.createCanvas(p.windowWidth, p.windowHeight);
         cnv.style('display', 'block');
         p.background(...BG);
 
-        // Seed the particle pool
         for (let i = 0; i < this.params.particleCount; i++) {
           this.particles.push(new Particle(p, this.params));
         }
       };
 
+      // ── draw loop ─────────────────────────────────────────────────────────
       p.draw = () => {
-        // Semi-transparent overlay creates motion trails.
+        // Semi-transparent fill over the whole canvas creates motion trails.
+        // trailAlpha controls trail length: lower = longer trails.
         p.noStroke();
         p.fill(...BG, this.params.trailAlpha);
         p.rect(0, 0, p.width, p.height);
 
-        // Advance noise time and frame counter
         this._t += this.params.noiseSpeed;
         this._frame++;
 
-        // Optional debug overlays
+        // Optional debug overlays (normally invisible — alpha 0 by default)
         if (this.params.vectorAlpha  > 0) this._drawVectors(p);
         if (this.params.contourAlpha > 0) this._drawContours(p);
 
-        // Maintain particle count dynamically
+        // Maintain particle count live so the slider takes effect immediately
         while (this.particles.length < this.params.particleCount) {
           this.particles.push(new Particle(p, this.params));
         }
@@ -349,12 +418,12 @@ export class FlowField {
           this.particles.pop();
         }
 
-        // Update + draw every particle
+        // ── per-particle update + draw ──────────────────────────────────────
         for (let i = 0; i < this.particles.length; i++) {
           const pt = this.particles[i];
 
-          // Flowfield vector at this position — computed for every particle,
-          // applied at full or partial weight depending on burst state.
+          // Flow-field vector at this particle's position.
+          // Computed unconditionally — burst particles use it at reduced weight.
           const nx    = pt.pos.x * this.params.noiseScale;
           const ny    = pt.pos.y * this.params.noiseScale;
           const angle = p.noise(nx, ny, this._t) * p.TWO_PI * 2;
@@ -362,10 +431,11 @@ export class FlowField {
           const ffy   = Math.sin(angle) * 0.8;
 
           if (pt.burstState) {
+            // ── burst path ────────────────────────────────────────────────
             const phys = this._burstPhysics(pt.burstState.frame);
 
             if (!phys) {
-              // Burst complete — clear and fall through to normal physics
+              // Burst fully complete — clear state, fall through to normal physics
               pt.burstState     = null;
               pt._colorOverride = undefined;
               pt._sizeOverride  = undefined;
@@ -373,33 +443,30 @@ export class FlowField {
             } else {
               const { phase, ffWeight, drag, drift, colorT } = phys;
 
-              // Colour + size — tint red on burst, return with colorT curve
+              // Trail tint: BURST_COLOR (red) at impact, lerps back to teal
               const nc = this.params.particleColor;
               pt._colorOverride = [
                 Math.round(lerp(BURST_COLOR[0], nc[0], colorT)),
                 Math.round(lerp(BURST_COLOR[1], nc[1], colorT)),
                 Math.round(lerp(BURST_COLOR[2], nc[2], colorT)),
               ];
+              // Size: enlarged at impact, returns to normal as colorT approaches 1
               pt._sizeOverride = lerp(this.params.particleSize * 2.5, this.params.particleSize, colorT);
 
-              // Scaled flowfield
-              if (ffWeight > 0) {
-                pt.applyForce(p.createVector(ffx * ffWeight, ffy * ffWeight));
-              }
+              // Partial flow-field influence (0 during burst, grows during float)
+              if (ffWeight > 0) pt.applyForce(p.createVector(ffx * ffWeight, ffy * ffWeight));
 
-              // Downward drift (replaces gravity during float)
-              if (drift > 0) {
-                pt.applyForce(p.createVector(0, drift));
-              }
+              // Downward drift during float phase
+              if (drift > 0) pt.applyForce(p.createVector(0, drift));
 
-              // Apply drag by scaling velocity directly, before update
+              // Apply drag coefficient directly to velocity before positional update
               pt.vel.x *= drag;
               pt.vel.y *= drag;
 
               if (phase === 'burst') {
-                // Manual update: bypass vel.limit so the outburst isn't clamped.
-                // By the end of the burst phase drag has reduced velocity well
-                // below particleSpeed, so normal limiting is safe from float onward.
+                // Bypass vel.limit() so the initial outburst isn't capped.
+                // By burst end, drag has reduced velocity below particleSpeed,
+                // so normal limiting is safe from float phase onward.
                 pt.prevPos.set(pt.pos);
                 pt.vel.add(pt.acc);
                 pt.pos.add(pt.vel);
@@ -407,15 +474,16 @@ export class FlowField {
                 pt.age++;
                 pt._wrapEdges();
               } else {
-                pt.update();
+                pt.update();  // uses vel.limit(particleSpeed)
               }
 
               pt.burstState.frame++;
             }
           }
 
-          // Normal physics — runs for non-burst particles, and on the frame
-          // a burst ends (burstState was just set to null above).
+          // ── normal physics ─────────────────────────────────────────────────
+          // Runs for non-burst particles, and also on the frame a burst completes
+          // (burstState was just set to null above; this executes on the same frame).
           if (!pt.burstState) {
             pt.applyForce(p.createVector(ffx, ffy));
             const orb = this._orbit(p, pt.pos.x, pt.pos.y);
@@ -423,12 +491,14 @@ export class FlowField {
             pt.update();
           }
 
+          // ── draw ──────────────────────────────────────────────────────────
           if (pt.burstState) {
-            this._drawStar(p, pt);
+            this._drawStar(p, pt);  // gold star while bursting
           } else {
-            pt.draw();
+            pt.draw();              // normal teal dot
           }
 
+          // Reset dead particles in-place — keeps pool at a constant size
           if (pt.isDead()) {
             pt.burstState     = null;
             pt._colorOverride = undefined;
@@ -436,17 +506,18 @@ export class FlowField {
             pt.reset();
           }
         }
-
-        // Curve overlay is drawn by a separate p5 instance (_overlaySketch)
       };
 
+      // ── resize ────────────────────────────────────────────────────────────
       p.windowResized = () => {
         p.resizeCanvas(p.windowWidth, p.windowHeight);
         p.background(...BG);
       };
 
+      // ── mouse / touch ─────────────────────────────────────────────────────
       p.mousePressed = (e) => {
         if (e && e.target !== p.canvas) return;
+        // Graph resize handle intercepts mousedown — don't also fire a burst
         if (this.params.showCurves && this._isOnResizeHandle(p)) {
           this._graphDragging  = true;
           this._dragStartX     = p.mouseX;
@@ -460,7 +531,7 @@ export class FlowField {
 
       p.mouseDragged = () => {
         if (!this._graphDragging) return;
-        // Top-left handle: drag left/up = bigger, right/down = smaller
+        // Drag left / up → bigger graph; drag right / down → smaller
         const delta = (this._dragStartX - p.mouseX + this._dragStartY - p.mouseY) * 0.003;
         this._graphScale = Math.max(0.5, Math.min(2.5, this._dragStartScale + delta));
       };
@@ -471,21 +542,25 @@ export class FlowField {
 
       p.touchStarted = (e) => {
         if (e && e.target !== p.canvas) return;
-        if (p.touches.length > 0) {
-          this._applyBurst(p, p.touches[0].x, p.touches[0].y);
-        }
+        if (p.touches.length > 0) this._applyBurst(p, p.touches[0].x, p.touches[0].y);
         return false;
       };
 
     }, this.container);
   }
 
-  // ─── overlay sketch (curve panel on its own transparent canvas) ────────────
+  // ══════════════════════════════════════════════════════════════════════════
+  //  p5 overlay sketch — burst-curve graph (separate transparent canvas)
+  // ══════════════════════════════════════════════════════════════════════════
 
   /**
-   * Creates a second p5 instance whose canvas sits above the main canvas but
-   * still within #bg's stacking context (so below nav/content/debug).
-   * `clear()` each frame keeps it free of trail-fade artefacts.
+   * Creates a second p5 instance on a transparent canvas layered directly
+   * above the main canvas (still within #bg's stacking context, so it remains
+   * behind all nav / content / debug UI).
+   *
+   * `p.clear()` each frame keeps it free of the trail-fade artefacts that
+   * would accumulate if it shared the main canvas.
+   * `pointer-events: none` ensures clicks/taps pass through to the main canvas.
    */
   _initOverlaySketch() {
     this._overlaySketch = new p5((p) => {
@@ -509,62 +584,81 @@ export class FlowField {
     }, this.container);
   }
 
-  // ─── public API ───────────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+  //  Public API
+  // ══════════════════════════════════════════════════════════════════════════
 
   /**
-   * Set the bounding rect of a DOM element that particles should orbit.
-   * Pass null to clear the effect.
+   * Attach an orbit attractor to a DOM element. Particles near the element
+   * will circle it counter-clockwise. Pass null to clear the effect.
    * @param {DOMRect|null} rect
    */
   setHoverRect(rect) {
     this._hoverRect = rect;
   }
 
-  // ─── particle orbit ───────────────────────────────────────────────────────
+  /** Show or hide the debug panel. The burst-curve graph follows panel visibility. */
+  toggleDebug() {
+    this._debugVisible = !this._debugVisible;
+    this._debugPanel.style.display = this._debugVisible ? 'flex' : 'none';
+    this.params.showCurves = this._debugVisible;
+  }
 
   /**
-   * Returns a force that pulls particles toward an orbit ring around the
-   * hovered nav element and sets them circling counter-clockwise.
+   * Tear down both p5 instances, the debug panel, and all event listeners.
+   * Call this when removing the FlowField from the page.
+   */
+  destroy() {
+    window.removeEventListener('keydown',    this._onKey);
+    window.removeEventListener('hashchange', this._onHashChange);
+    this._sketch.remove();
+    this._overlaySketch?.remove();
+    this._debugPanel?.remove();
+    this._debugToggleBtn?.remove();
+    this.particles = [];
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  //  Particle orbit (nav hover effect)
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Computes an orbit force for a particle near the hovered nav element.
    *
-   * Two components act together every frame:
-   *   • Radial spring — attractive when dist > ORBIT, repulsive when < ORBIT,
-   *     zero exactly on the ring.  Strength scales with displacement.
-   *   • CCW tangential — perpendicular to the outward radial, strongest near
-   *     the element and tapering to zero at OUTER (the influence boundary).
+   * Two components act together:
+   *   Radial spring  — attractive from outside the orbit ring, repulsive from
+   *                    inside. 3× stiffer inside keeps the ring crisp.
+   *   CCW tangential — sweeps particles around the ring; tapers to zero at the
+   *                    outer influence boundary.
    *
    * @param {object} p  - p5 instance
    * @param {number} px - particle x
    * @param {number} py - particle y
-   * @returns {p5.Vector|null}
+   * @returns {p5.Vector|null} force vector, or null if particle is out of range
    */
   _orbit(p, px, py) {
     const r = this._hoverRect;
     if (!r) return null;
 
-    // Centre of the hovered word
-    const cx = (r.left + r.right)  / 2;
-    const cy = (r.top  + r.bottom) / 2;
-    const dx = px - cx, dy = py - cy;
+    const cx   = (r.left + r.right)  / 2;
+    const cy   = (r.top  + r.bottom) / 2;
+    const dx   = px - cx;
+    const dy   = py - cy;
     const dist = Math.hypot(dx, dy);
 
-    // Outer influence radius — beyond this, no force at all
-    const OUTER = 300;
-    // Orbit radius — the ring particles settle onto
-    const ORBIT = Math.max(r.width * 0.75, 90);
+    const OUTER = 300;                          // influence boundary (px)
+    const ORBIT = Math.max(r.width * 0.75, 90); // target orbit radius (px)
 
     if (dist > OUTER || dist < 1) return null;
 
-    // Outward unit vector from centre to particle
-    const nx = dx / dist, ny = dy / dist;
-    // CCW tangential unit vector (rotate outward 90° CCW)
-    const tx = -ny, ty = nx;
+    const nx = dx / dist;  // outward unit vector
+    const ny = dy / dist;
+    const tx = -ny;         // CCW tangential unit vector
+    const ty =  nx;
 
-    // Radial spring: pulls in hard from far away, strongly resists going inside
-    // Higher k = snappier spring; asymmetry (×3 inside) keeps the ring crisp
     const disp    = dist - ORBIT;
-    const k       = disp > 0 ? 0.18 : 0.54; // stiffer when inside the ring
+    const k       = disp > 0 ? 0.18 : 0.54;  // softer outside ring, stiffer inside
     const radial  = -disp * k;
-    // Tangential: strong near the word, fades to zero at OUTER
     const tangent = (1 - dist / OUTER) * 1.4;
 
     return p.createVector(
@@ -573,19 +667,21 @@ export class FlowField {
     );
   }
 
-  // ─── flow-direction vectors ───────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+  //  Flow-direction vector overlay
+  // ══════════════════════════════════════════════════════════════════════════
 
   /**
-   * Draws a coarse grid of short tick marks showing the instantaneous
-   * flow direction at each point — the same angle used to steer particles.
+   * Draws a grid of short tick marks showing the instantaneous flow direction —
+   * the same angle used to steer particles. Normally invisible (vectorAlpha = 0).
    * @param {object} p - p5 instance
    */
   _drawVectors(p) {
-    const CELL   = 28;       // grid spacing in pixels
-    const LEN    = 7;        // half-length of each tick mark
-    const cols   = Math.ceil(p.width  / CELL);
-    const rows   = Math.ceil(p.height / CELL);
-    const ns     = this.params.noiseScale;
+    const CELL = 28;  // grid spacing (px)
+    const LEN  = 7;   // half-length of each tick (px)
+    const cols = Math.ceil(p.width  / CELL);
+    const rows = Math.ceil(p.height / CELL);
+    const ns   = this.params.noiseScale;
 
     p.stroke(...theme.fg, this.params.vectorAlpha);
     p.strokeWeight(0.7);
@@ -603,50 +699,47 @@ export class FlowField {
     }
   }
 
-  // ─── contour lines (marching squares) ────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+  //  Contour lines (marching squares)
+  // ══════════════════════════════════════════════════════════════════════════
 
   /**
-   * Draws iso-value contour lines of the current noise field using a
-   * simplified marching-squares pass.
+   * Draws iso-value contour lines of the current noise field using a lightweight
+   * marching-squares pass.
    *
-   * Strategy:
-   *   1. Sample p.noise() on a coarse grid (one pass, cached per frame).
-   *   2. For each cell and each iso-level, find where the level crosses
-   *      the cell's four edges and draw a line segment between crossings.
+   * Algorithm:
+   *   1. Sample p.noise() on a coarse grid into a flat Float32Array (reused per frame).
+   *   2. For each iso-level and cell, interpolate crossing points on the four edges.
+   *   3. Chain adjacent crossing cells into arcs using a neighbour-walk.
+   *   4. Draw each arc as a smooth Catmull-Rom spline.
+   *
+   * Scratch arrays are pre-allocated on the first call and reused to avoid
+   * per-frame GC pressure.
    *
    * @param {object} p - p5 instance
    */
   _drawContours(p) {
-    const CELL = 22; // grid cell size in pixels
-    const cols = Math.ceil(p.width  / CELL);
-    const rows = Math.ceil(p.height / CELL);
-    const ns   = this.params.noiseScale;
-
-    // ── 1. build noise grid ──────────────────────────────────────────────
-    // Reuse a flat Float32Array to avoid per-frame allocations.
+    const CELL   = 22;  // grid cell size (px) — coarser = faster, fewer details
+    const cols   = Math.ceil(p.width  / CELL);
+    const rows   = Math.ceil(p.height / CELL);
+    const ns     = this.params.noiseScale;
     const stride = cols + 1;
+
+    // ── 1. sample noise grid ──────────────────────────────────────────────
     if (!this._contourGrid || this._contourGrid.length < (rows + 1) * stride) {
       this._contourGrid = new Float32Array((rows + 1) * stride);
     }
     const grid = this._contourGrid;
-
     for (let r = 0; r <= rows; r++) {
       for (let c = 0; c <= cols; c++) {
         grid[r * stride + c] = p.noise(c * CELL * ns, r * CELL * ns, this._t);
       }
     }
 
-    // ── 2. draw contours ─────────────────────────────────────────────────
-    p.stroke(...theme.fg, this.params.contourAlpha);
-    p.strokeWeight(0.6);
-    p.noFill();
-
-    const levels = this.params.contourLevels;
-    const n      = rows * cols;
-
-    // Scratch buffers — allocated once, reused every frame.
+    // ── 2. allocate scratch buffers ───────────────────────────────────────
+    const n = rows * cols;
     if (!this._cSeg || this._cSeg.length < n * 4) {
-      this._cSeg   = new Float32Array(n * 4); // [x1,y1,x2,y2] per cell
+      this._cSeg   = new Float32Array(n * 4);  // [x1,y1,x2,y2] per cell
       this._cHas   = new Uint8Array(n);
       this._cUsed  = new Uint8Array(n);
       this._cFwd   = [];
@@ -656,9 +749,17 @@ export class FlowField {
     const seg = this._cSeg, has = this._cHas, used = this._cUsed;
     const fwd = this._cFwd, bwd = this._cBwd, chain = this._cChain;
 
-    // Walk from cell (r,c) following the contour arc via shared edge points.
-    // Appends newly-visited points to `out`; stops when no unvisited neighbour
-    // shares the current exit coordinate (exX, exY).
+    p.stroke(...theme.fg, this.params.contourAlpha);
+    p.strokeWeight(0.6);
+    p.noFill();
+
+    // ── 3. per iso-level: build crossings, trace arcs, draw ───────────────
+
+    /**
+     * Walks a contour arc from cell (r, c) in the direction exiting through
+     * (exX, exY). Follows shared edge-point matches across adjacent cells,
+     * marking each visited cell in `used`. Appends exit coordinates to `out`.
+     */
     const walk = (startR, startC, exX, exY, out) => {
       let r = startR, c = startC;
       while (true) {
@@ -667,7 +768,7 @@ export class FlowField {
           const nr = r + (d === 0 ? -1 : d === 1 ? 1 : 0);
           const nc = c + (d === 2 ? -1 : d === 3 ? 1 : 0);
           if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-          const ni = nr * cols + nc;
+          const ni  = nr * cols + nc;
           if (!has[ni] || used[ni]) continue;
           const ni4 = ni << 2;
           const nax = seg[ni4], nay = seg[ni4 + 1];
@@ -686,10 +787,11 @@ export class FlowField {
       }
     };
 
+    const levels = this.params.contourLevels;
     for (let li = 1; li <= levels; li++) {
       const L = li / (levels + 1);
 
-      // Build crossing table for this iso-level.
+      // Find edge crossings for this iso-level
       has.fill(0);
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
@@ -699,70 +801,82 @@ export class FlowField {
           const bl = grid[(r + 1) * stride + c    ];
           const x0 = c * CELL, y0 = r * CELL;
           const pts = [];
-          if ((tl-L)*(tr-L) < 0) { const t=(L-tl)/(tr-tl); pts.push(x0+t*CELL, y0); }
-          if ((tr-L)*(br-L) < 0) { const t=(L-tr)/(br-tr); pts.push(x0+CELL, y0+t*CELL); }
-          if ((bl-L)*(br-L) < 0) { const t=(L-bl)/(br-bl); pts.push(x0+t*CELL, y0+CELL); }
-          if ((tl-L)*(bl-L) < 0) { const t=(L-tl)/(bl-tl); pts.push(x0, y0+t*CELL); }
+          if ((tl - L) * (tr - L) < 0) { const t = (L - tl) / (tr - tl); pts.push(x0 + t * CELL, y0); }
+          if ((tr - L) * (br - L) < 0) { const t = (L - tr) / (br - tr); pts.push(x0 + CELL, y0 + t * CELL); }
+          if ((bl - L) * (br - L) < 0) { const t = (L - bl) / (br - bl); pts.push(x0 + t * CELL, y0 + CELL); }
+          if ((tl - L) * (bl - L) < 0) { const t = (L - tl) / (bl - tl); pts.push(x0, y0 + t * CELL); }
           if (pts.length >= 4) {
             const i4 = (r * cols + c) << 2;
-            seg[i4] = pts[0]; seg[i4+1] = pts[1];
-            seg[i4+2] = pts[2]; seg[i4+3] = pts[3];
+            seg[i4] = pts[0]; seg[i4 + 1] = pts[1];
+            seg[i4 + 2] = pts[2]; seg[i4 + 3] = pts[3];
             has[r * cols + c] = 1;
           }
         }
       }
 
-      // Trace each arc and draw as a smooth Catmull-Rom spline.
+      // Trace arcs and draw as Catmull-Rom splines
       used.fill(0);
       for (let start = 0; start < n; start++) {
         if (!has[start] || used[start]) continue;
         used[start] = 1;
         const r0 = (start / cols) | 0, c0 = start % cols;
         const i4  = start << 2;
-        const ax  = seg[i4], ay = seg[i4+1], bx = seg[i4+2], by = seg[i4+3];
+        const ax  = seg[i4], ay = seg[i4 + 1];
+        const bx  = seg[i4 + 2], by = seg[i4 + 3];
 
-        // Extend in both directions from this seed cell.
-        fwd.length = 0; bwd.length = 0; chain.length = 0;
-        walk(r0, c0, bx, by, fwd); // extend past B
-        walk(r0, c0, ax, ay, bwd); // extend past A
+        fwd.length   = 0;
+        bwd.length   = 0;
+        chain.length = 0;
 
-        // Assemble ordered chain: reversed(bwd) + [A,B] + fwd
-        for (let i = bwd.length - 2; i >= 0; i -= 2) chain.push(bwd[i], bwd[i+1]);
+        walk(r0, c0, bx, by, fwd);  // extend beyond endpoint B
+        walk(r0, c0, ax, ay, bwd);  // extend beyond endpoint A
+
+        // Assemble ordered chain: reversed(bwd) + [A, B] + fwd
+        for (let i = bwd.length - 2; i >= 0; i -= 2) chain.push(bwd[i], bwd[i + 1]);
         chain.push(ax, ay, bx, by);
         for (let i = 0; i < fwd.length; i++) chain.push(fwd[i]);
 
-        // Draw as Catmull-Rom; duplicate end-points serve as control points.
+        // Duplicate endpoints so Catmull-Rom passes through first and last points
         p.beginShape();
         p.curveVertex(chain[0], chain[1]);
-        for (let i = 0; i < chain.length; i += 2) p.curveVertex(chain[i], chain[i+1]);
-        p.curveVertex(chain[chain.length-2], chain[chain.length-1]);
+        for (let i = 0; i < chain.length; i += 2) p.curveVertex(chain[i], chain[i + 1]);
+        p.curveVertex(chain[chain.length - 2], chain[chain.length - 1]);
         p.endShape();
       }
     }
   }
 
-  // ─── burst curve overlay ──────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+  //  Burst-curve overlay — cache + layout
+  // ══════════════════════════════════════════════════════════════════════════
 
   /**
-   * Lazily builds and caches the static curve sample arrays.
-   * All three curves are deterministic (no runtime params), so this only
-   * runs once per FlowField instance.
+   * Pre-computes normalised sample arrays for the four burst-phase curves.
+   * Stored as Float32Arrays for efficient per-frame rendering.
+   * Results are cached; _drawCurveOverlay triggers a rebuild when the
+   * burst-physics cache key changes.
+   *
+   * Arrays produced:
+   *   fieldSamples — flow-field weight (0 → 1)
+   *   driftSamples — downward drift, normalised to peak driftStrength
+   *   velSamples   — accumulated velocity ratio after applying drag each frame
+   *   colorSamples — colorT blend factor (0 = BURST_COLOR, 1 = particleColor)
    */
   _buildCurveSamples() {
-    const totalDur    = this.params.burstDur + this.params.floatDur + this.params.returnDur;
-    const driftScale  = Math.max(this.params.driftStrength, 0.001); // guard against /0
+    const totalDur   = this.params.burstDur + this.params.floatDur + this.params.returnDur;
+    const driftScale = Math.max(this.params.driftStrength, 0.001);  // prevent ÷0
 
     const fieldSamples = new Float32Array(totalDur);
     const driftSamples = new Float32Array(totalDur);
     const velSamples   = new Float32Array(totalDur);
     const colorSamples = new Float32Array(totalDur);
 
-    let vel = 1.0;
+    let vel = 1.0;  // running velocity ratio (starts at 1, multiplied by drag each frame)
     for (let i = 0; i < totalDur; i++) {
       const phys = this._burstPhysics(i);
       if (phys) {
         fieldSamples[i] = phys.ffWeight;
-        driftSamples[i] = phys.drift / driftScale;  // normalised 0–1
+        driftSamples[i] = phys.drift / driftScale;  // normalised relative to peak
         colorSamples[i] = phys.colorT;
         vel            *= phys.drag;
       }
@@ -773,49 +887,145 @@ export class FlowField {
   }
 
   /**
-   * Draws the burst-phase transition curve overlay onto the canvas.
-   * Transparent background; all lines and text in black; scales with _graphScale.
-   * Drag handle (2×3 dot grid) at top-left corner resizes the panel.
+   * Computes the pixel-space layout rectangle for the curve overlay panel and
+   * returns it as a plain object. Extracted so all drawing sub-methods share a
+   * single consistent set of layout constants via one `lo` argument.
+   *
    * @param {object} p - p5 instance
+   * @returns {{ sc, W, H, ox, oy, CW, CH, cx0, cy0, cx1, cy1, xFloat, xReturn, totalDur, burstDur, floatEnd }}
    */
-  _drawCurveOverlay(p) {
-    // Rebuild curve cache whenever burst physics params change
-    const cacheKey = `${this.params.burstDur},${this.params.floatDur},${this.params.returnDur},${this.params.burstDrag},${this.params.floatDrag},${this.params.driftStrength}`;
-    if (!this._curveSamples || this._curveSamplesKey !== cacheKey) {
-      this._buildCurveSamples();
-      this._curveSamplesKey = cacheKey;
-    }
-    const { fieldSamples, driftSamples, velSamples, colorSamples } = this._curveSamples;
-
-    // Phase boundaries from live params (shadow the module-level constants)
-    const BURST_DUR = this.params.burstDur;
-    const FLOAT_END = this.params.burstDur + this.params.floatDur;
-    const TOTAL_DUR = FLOAT_END + this.params.returnDur;
-
-    // ── layout ────────────────────────────────────────────────────────────
+  _graphLayout(p) {
     const sc = this._graphScale;
     const W  = Math.round(322 * sc);
     const H  = Math.round(190 * sc);
-    const MR = 20, MB = 20;
+    const MR = 20, MB = 20;  // margin from viewport right / bottom edge
     const ox = p.width  - W - MR;
     const oy = p.height - H - MB;
 
-    const PL = Math.round(42 * sc), PR = Math.round(14 * sc);
-    const PT = Math.round(34 * sc), PB = Math.round(40 * sc);
-    const CW = W - PL - PR;
-    const CH = H - PT - PB;
-    const cx0 = ox + PL;
-    const cy0 = oy + PT;
-    const cx1 = cx0 + CW;
-    const cy1 = cy0 + CH;
+    const PL = Math.round(42 * sc);  // padding left  (y-axis labels)
+    const PR = Math.round(14 * sc);  // padding right
+    const PT = Math.round(34 * sc);  // padding top   (header)
+    const PB = Math.round(40 * sc);  // padding bottom (legend)
 
-    const xFloat  = cx0 + (BURST_DUR / TOTAL_DUR) * CW;
-    const xReturn = cx0 + (FLOAT_END / TOTAL_DUR) * CW;
+    const CW  = W - PL - PR;    // chart width
+    const CH  = H - PT - PB;    // chart height
+    const cx0 = ox + PL;        // chart left edge
+    const cy0 = oy + PT;        // chart top edge
+    const cx1 = cx0 + CW;       // chart right edge
+    const cy1 = cy0 + CH;       // chart bottom edge
 
-    p.push();
-    p.textFont('Courier New');
+    const { burstDur, floatDur, returnDur } = this.params;
+    const floatEnd = burstDur + floatDur;
+    const totalDur = floatEnd + returnDur;
+    const xFloat   = cx0 + (burstDur / totalDur) * CW;  // BURST → FLOAT boundary x
+    const xReturn  = cx0 + (floatEnd / totalDur) * CW;  // FLOAT → RETURN boundary x
 
-    // ── corner accent marks — machined-panel aesthetic ─────────────────────
+    return { sc, W, H, ox, oy, CW, CH, cx0, cy0, cx1, cy1, xFloat, xReturn, totalDur, burstDur, floatEnd };
+  }
+
+  // ── curve plotting helpers ─────────────────────────────────────────────────
+
+  /**
+   * Draws a solid continuous curve mapping sample values [0–1] to chart height.
+   * @param {object}       p       - p5 instance
+   * @param {object}       lo      - layout from _graphLayout()
+   * @param {Float32Array} samples
+   * @param {number}       alpha   - stroke alpha (0–255)
+   * @param {number}       weight  - stroke weight (scaled by lo.sc internally)
+   */
+  _plotSolid(p, lo, samples, alpha, weight) {
+    const { cx0, cy1, CW, CH, totalDur, sc } = lo;
+    p.noFill();
+    p.stroke(0, 0, 0, alpha);
+    p.strokeWeight(weight * sc);
+    p.beginShape();
+    for (let i = 0; i < totalDur; i++) {
+      p.vertex(
+        cx0 + (i / (totalDur - 1)) * CW,
+        cy1 - Math.max(0, Math.min(1, samples[i])) * CH,
+      );
+    }
+    p.endShape();
+  }
+
+  /**
+   * Draws a dashed curve with alternating drawn / gap segments.
+   * @param {object}       p
+   * @param {object}       lo      - layout from _graphLayout()
+   * @param {Float32Array} samples
+   * @param {number}       alpha
+   * @param {number}       weight  - stroke weight (before sc scaling)
+   * @param {number}       segLen  - drawn segment length in frames
+   * @param {number}       gapLen  - gap length in frames
+   */
+  _plotSegmented(p, lo, samples, alpha, weight, segLen, gapLen) {
+    const { cx0, cy1, CW, CH, totalDur, sc } = lo;
+    p.noFill();
+    p.stroke(0, 0, 0, alpha);
+    p.strokeWeight(weight * sc);
+    const cycle = segLen + gapLen;
+    let open = false;
+    for (let i = 0; i < totalDur; i++) {
+      const draw = (i % cycle) < segLen;
+      if ( draw && !open) { p.beginShape(); open = true; }
+      if (!draw &&  open) { p.endShape();   open = false; }
+      if (open) {
+        p.vertex(
+          cx0 + (i / (totalDur - 1)) * CW,
+          cy1 - Math.max(0, Math.min(1, samples[i])) * CH,
+        );
+      }
+    }
+    if (open) p.endShape();
+  }
+
+  /**
+   * Draws a dotted curve whose colour transitions from BURST_COLOR → particleColor,
+   * matching the actual particle tint/size transition. Each segment is a single
+   * p.line() call so that stroke colour can change per-segment.
+   * @param {object}       p
+   * @param {object}       lo      - layout from _graphLayout()
+   * @param {Float32Array} samples - colorT values [0–1]
+   * @param {number}       weight  - stroke weight (before sc scaling)
+   * @param {number}       segLen  - dot length in frames
+   * @param {number}       gapLen  - gap length in frames
+   */
+  _plotColorGradient(p, lo, samples, weight, segLen, gapLen) {
+    const { cx0, cy1, CW, CH, totalDur, sc } = lo;
+    const nc    = this.params.particleColor;
+    const cycle = segLen + gapLen;
+    p.noFill();
+    p.strokeWeight(weight * sc);
+    for (let i = 0; i < totalDur - 1; i++) {
+      if ((i % cycle) >= segLen) continue;
+      const t = samples[i];
+      p.stroke(
+        Math.round(lerp(BURST_COLOR[0], nc[0], t)),
+        Math.round(lerp(BURST_COLOR[1], nc[1], t)),
+        Math.round(lerp(BURST_COLOR[2], nc[2], t)),
+        210,
+      );
+      p.line(
+        cx0 + (i       / (totalDur - 1)) * CW,
+        cy1 - Math.max(0, Math.min(1, samples[i]))     * CH,
+        cx0 + ((i + 1) / (totalDur - 1)) * CW,
+        cy1 - Math.max(0, Math.min(1, samples[i + 1])) * CH,
+      );
+    }
+  }
+
+  // ── overlay sub-methods (all called within a p.push() block) ──────────────
+
+  /**
+   * Draws the decorative chrome: corner accents, header divider, resize handle,
+   * header text, phase region shading, grid lines, phase labels, y-axis labels.
+   * @param {object} p  - p5 instance
+   * @param {object} lo - layout from _graphLayout()
+   */
+  _drawCurveChrome(p, lo) {
+    const { sc, ox, oy, W, H, cx0, cy0, cx1, cy1, CW, CH, xFloat, xReturn, totalDur } = lo;
+
+    // Corner accent marks — machined-panel aesthetic
     const CA = Math.round(9 * sc);
     p.stroke(0, 0, 0, 40);
     p.strokeWeight(0.8 * sc);
@@ -827,15 +1037,15 @@ export class FlowField {
     ];
     corners.forEach(([x, y, sx, sy]) => {
       p.line(x, y, x + sx * CA, y);
-      p.line(x, y, x, y + sy * CA);
+      p.line(x, y, x,           y + sy * CA);
     });
 
-    // Divider line below header
+    // Hairline below header area
     p.stroke(0, 0, 0, 22);
     p.strokeWeight(0.5 * sc);
     p.line(ox + 6, cy0 - Math.round(7 * sc), ox + W - 6, cy0 - Math.round(7 * sc));
 
-    // ── resize handle — 2×3 dot grid, top-left corner ─────────────────────
+    // Resize handle — 2×3 dot grid, top-left corner
     const hx   = ox + Math.round(8 * sc);
     const hy   = oy + Math.round(8 * sc);
     const dotR = 1.5 * sc;
@@ -848,7 +1058,7 @@ export class FlowField {
       }
     }
 
-    // ── header ────────────────────────────────────────────────────────────
+    // Header
     p.noStroke();
     p.textSize(Math.round(11 * sc));
     p.textAlign(p.LEFT, p.TOP);
@@ -858,9 +1068,9 @@ export class FlowField {
     p.textSize(Math.round(7 * sc));
     p.textAlign(p.RIGHT, p.TOP);
     p.fill(0, 0, 0, 60);
-    p.text(`t / ${TOTAL_DUR}`, cx1, oy + Math.round(12 * sc));
+    p.text(`t / ${totalDur}`, cx1, oy + Math.round(12 * sc));
 
-    // ── phase regions ─────────────────────────────────────────────────────
+    // Float-phase background shading
     p.noStroke();
     p.fill(0, 0, 0, 4);
     p.rect(xFloat, cy0, xReturn - xFloat, CH);
@@ -869,11 +1079,11 @@ export class FlowField {
     p.textSize(Math.round(7.5 * sc));
     p.textAlign(p.CENTER, p.BOTTOM);
     p.fill(0, 0, 0, 55);
-    p.text('· BURST ·',  (cx0    + xFloat)  / 2, cy0 - Math.round(3 * sc));
-    p.text('· FLOAT ·',  (xFloat + xReturn) / 2, cy0 - Math.round(3 * sc));
-    p.text('· RETURN ·', (xReturn + cx1)    / 2, cy0 - Math.round(3 * sc));
+    p.text('· BURST ·',  (cx0     + xFloat)  / 2, cy0 - Math.round(3 * sc));
+    p.text('· FLOAT ·',  (xFloat  + xReturn) / 2, cy0 - Math.round(3 * sc));
+    p.text('· RETURN ·', (xReturn + cx1)     / 2, cy0 - Math.round(3 * sc));
 
-    // ── grid ──────────────────────────────────────────────────────────────
+    // Horizontal grid lines at 0, 0.25, 0.5, 0.75, 1
     p.strokeWeight(0.5 * sc);
     for (let g = 0; g <= 4; g++) {
       const gy = cy1 - g * CH / 4;
@@ -881,7 +1091,7 @@ export class FlowField {
       p.line(cx0, gy, cx1, gy);
     }
 
-    // Phase dividers — dotted vertical
+    // Phase boundary dividers — hand-drawn dotted verticals
     [xFloat, xReturn].forEach(x => {
       for (let dy = cy0; dy < cy1; dy += Math.round(5 * sc)) {
         p.stroke(0, 0, 0, 30);
@@ -897,126 +1107,95 @@ export class FlowField {
     p.text('1',  cx0 - Math.round(5 * sc), cy0);
     p.text('.5', cx0 - Math.round(5 * sc), cy0 + CH / 2);
     p.text('0',  cx0 - Math.round(5 * sc), cy1);
+  }
 
-    // ── curve helpers ─────────────────────────────────────────────────────
-
-    const solid = (samples, alpha, weight) => {
-      p.noFill();
-      p.stroke(0, 0, 0, alpha);
-      p.strokeWeight(weight * sc);
-      p.beginShape();
-      for (let i = 0; i < TOTAL_DUR; i++) {
-        p.vertex(cx0 + (i / (TOTAL_DUR - 1)) * CW,
-                 cy1 - Math.max(0, Math.min(1, samples[i])) * CH);
-      }
-      p.endShape();
-    };
-
-    const segmented = (samples, alpha, weight, segLen, gapLen) => {
-      p.noFill();
-      p.stroke(0, 0, 0, alpha);
-      p.strokeWeight(weight * sc);
-      const cycle = segLen + gapLen;
-      let open = false;
-      for (let i = 0; i < TOTAL_DUR; i++) {
-        const draw = (i % cycle) < segLen;
-        if (draw && !open)  { p.beginShape(); open = true; }
-        if (!draw && open)  { p.endShape();   open = false; }
-        if (open) {
-          p.vertex(cx0 + (i / (TOTAL_DUR - 1)) * CW,
-                   cy1 - Math.max(0, Math.min(1, samples[i])) * CH);
-        }
-      }
-      if (open) p.endShape();
-    };
-
-    // Color-gradient dotted curve for TINT + SIZE — lerps BURST_COLOR → particleColor
-    const colorGradient = (samples, weight, segLen, gapLen) => {
-      const nc = this.params.particleColor;
-      p.strokeWeight(weight * sc);
-      p.noFill();
-      const cycle = segLen + gapLen;
-      for (let i = 0; i < TOTAL_DUR - 1; i++) {
-        if ((i % cycle) >= segLen) continue;
-        const t = samples[i];
-        p.stroke(
-          Math.round(lerp(BURST_COLOR[0], nc[0], t)),
-          Math.round(lerp(BURST_COLOR[1], nc[1], t)),
-          Math.round(lerp(BURST_COLOR[2], nc[2], t)),
-          210,
-        );
-        p.line(
-          cx0 + (i / (TOTAL_DUR - 1)) * CW,
-          cy1 - Math.max(0, Math.min(1, samples[i])) * CH,
-          cx0 + ((i + 1) / (TOTAL_DUR - 1)) * CW,
-          cy1 - Math.max(0, Math.min(1, samples[i + 1])) * CH,
-        );
-      }
-    };
-
-    // Draw order: back to front
-    segmented(driftSamples, 100, 0.8, 8, 4);    // dashed — lightest, back
-    solid(velSamples,       130, 1.0);            // solid thin — secondary
-    colorGradient(colorSamples, 1.6, 3, 3);       // dotted gradient — BURST_COLOR → normal
-    solid(fieldSamples,     200, 1.8);            // solid thick — front, darkest
-
-    // ── playhead ──────────────────────────────────────────────────────────
+  /**
+   * Draws the animated scan-line playhead if a burst occurred within
+   * the last totalDur frames. Shows frame counter and current phase label.
+   * @param {object} p  - p5 instance
+   * @param {object} lo - layout from _graphLayout()
+   */
+  _drawCurvePlayhead(p, lo) {
+    const { sc, cx0, cy0, cx1, cy1, CW, oy, totalDur } = lo;
     const playFrame = this._frame - this._latestBurstAt;
-    if (playFrame >= 0 && playFrame < TOTAL_DUR) {
-      const phx = cx0 + (playFrame / TOTAL_DUR) * CW;
+    if (playFrame < 0 || playFrame >= totalDur) return;
 
-      p.stroke(0, 0, 0, 175);
-      p.strokeWeight(1 * sc);
-      p.line(phx, cy0, phx, cy1);
-      p.line(phx - 3 * sc, cy0, phx + 3 * sc, cy0);
-      p.line(phx - 3 * sc, cy1, phx + 3 * sc, cy1);
+    const phx = cx0 + (playFrame / totalDur) * CW;
 
+    // Scan line + end ticks
+    p.stroke(0, 0, 0, 175);
+    p.strokeWeight(1 * sc);
+    p.line(phx, cy0, phx, cy1);
+    p.line(phx - 3 * sc, cy0, phx + 3 * sc, cy0);
+    p.line(phx - 3 * sc, cy1, phx + 3 * sc, cy1);
+
+    // Frame counter above the line
+    p.noStroke();
+    p.textSize(Math.round(8 * sc));
+    p.textAlign(p.CENTER, p.BOTTOM);
+    p.fill(0, 0, 0, 195);
+    p.text(`t = ${playFrame}`, phx, cy0 - Math.round(3 * sc));
+
+    // Phase dot + label, top-right corner
+    const phys = this._burstPhysics(playFrame);
+    if (phys) {
       p.noStroke();
+      p.fill(0, 0, 0, 190);
+      p.ellipse(cx1 - 5 * sc, oy + Math.round(13 * sc), 4 * sc, 4 * sc);
       p.textSize(Math.round(8 * sc));
-      p.textAlign(p.CENTER, p.BOTTOM);
-      p.fill(0, 0, 0, 195);
-      p.text(`t = ${playFrame}`, phx, cy0 - Math.round(3 * sc));
-
-      // Phase label — top-right corner
-      const phys = this._burstPhysics(playFrame);
-      if (phys) {
-        p.noStroke();
-        p.fill(0, 0, 0, 190);
-        p.ellipse(cx1 - 5 * sc, oy + Math.round(13 * sc), 4 * sc, 4 * sc);
-        p.textSize(Math.round(8 * sc));
-        p.textAlign(p.RIGHT, p.CENTER);
-        p.fill(0, 0, 0, 140);
-        p.text(phys.phase.toUpperCase(), cx1 - Math.round(13 * sc), oy + Math.round(13 * sc));
-      }
+      p.textAlign(p.RIGHT, p.CENTER);
+      p.fill(0, 0, 0, 140);
+      p.text(phys.phase.toUpperCase(), cx1 - Math.round(13 * sc), oy + Math.round(13 * sc));
     }
+  }
 
-    // ── legend ────────────────────────────────────────────────────────────
+  /**
+   * Draws the legend strip below the chart. Each entry renders a short sample
+   * line in the curve's own visual style, followed by a text label.
+   * @param {object} p  - p5 instance
+   * @param {object} lo - layout from _graphLayout()
+   */
+  _drawCurveLegend(p, lo) {
+    const { sc, cx0, cy1 } = lo;
     const legY = cy1 + Math.round(19 * sc);
+    const nc   = this.params.particleColor;
+
     p.textSize(Math.round(8 * sc));
     p.textAlign(p.LEFT, p.CENTER);
-    const LEGEND = [
+
+    const ENTRIES = [
       {
         label: 'FLOW FIELD',
-        draw : (x) => { p.stroke(0,0,0,195); p.strokeWeight(1.8*sc); p.line(x, legY, x + 12*sc, legY); },
+        draw : (x) => {
+          p.stroke(0, 0, 0, 195);
+          p.strokeWeight(1.8 * sc);
+          p.line(x, legY, x + 12 * sc, legY);
+        },
       },
       {
         label: 'SPEED',
-        draw : (x) => { p.stroke(0,0,0,130); p.strokeWeight(1.0*sc); p.line(x, legY, x + 12*sc, legY); },
+        draw : (x) => {
+          p.stroke(0, 0, 0, 130);
+          p.strokeWeight(1.0 * sc);
+          p.line(x, legY, x + 12 * sc, legY);
+        },
       },
       {
         label: 'DRIFT',
         draw : (x) => {
-          p.stroke(0,0,0,100); p.strokeWeight(0.8*sc);
-          for (let xi = x; xi < x + 12*sc; xi += 4*sc) p.line(xi, legY, Math.min(xi + 2*sc, x + 12*sc), legY);
+          p.stroke(0, 0, 0, 100);
+          p.strokeWeight(0.8 * sc);
+          for (let xi = x; xi < x + 12 * sc; xi += 4 * sc) {
+            p.line(xi, legY, Math.min(xi + 2 * sc, x + 12 * sc), legY);
+          }
         },
       },
       {
         label: 'TINT + SIZE',
         draw : (x) => {
-          const nc = this.params.particleColor;
-          p.strokeWeight(1.6*sc);
+          p.strokeWeight(1.6 * sc);
           const w = 12 * sc;
-          for (let i = 0; i < w; i += 3*sc) {
+          for (let i = 0; i < w; i += 3 * sc) {
             const t = i / w;
             p.stroke(
               Math.round(lerp(BURST_COLOR[0], nc[0], t)),
@@ -1024,25 +1203,68 @@ export class FlowField {
               Math.round(lerp(BURST_COLOR[2], nc[2], t)),
               220,
             );
-            p.line(x + i, legY, Math.min(x + i + 1.5*sc, x + w), legY);
+            p.line(x + i, legY, Math.min(x + i + 1.5 * sc, x + w), legY);
           }
         },
       },
     ];
+
     let legX = cx0;
-    LEGEND.forEach(({ label, draw }) => {
+    ENTRIES.forEach(({ label, draw }) => {
       draw(legX);
       p.noStroke();
       p.fill(0, 0, 0, 120);
       p.text(label, legX + 16 * sc, legY);
       legX += 16 * sc + p.textWidth(label) + 10 * sc;
     });
+  }
+
+  // ── main overlay entry point ───────────────────────────────────────────────
+
+  /**
+   * Top-level method called each frame by the overlay p5 instance.
+   * Validates the sample cache, computes the layout, then delegates to
+   * focused sub-methods for chrome, curves, playhead, and legend.
+   * @param {object} p - p5 instance (transparent overlay canvas)
+   */
+  _drawCurveOverlay(p) {
+    // Rebuild sample cache when any burst-physics param has changed
+    const cacheKey = `${this.params.burstDur},${this.params.floatDur},${this.params.returnDur},${this.params.burstDrag},${this.params.floatDrag},${this.params.driftStrength}`;
+    if (!this._curveSamples || this._curveSamplesKey !== cacheKey) {
+      this._buildCurveSamples();
+      this._curveSamplesKey = cacheKey;
+    }
+    const { fieldSamples, driftSamples, velSamples, colorSamples } = this._curveSamples;
+
+    const lo = this._graphLayout(p);
+
+    p.push();
+    p.textFont('Courier New');  // set once; all sub-methods inherit within push/pop
+
+    this._drawCurveChrome(p, lo);
+
+    // Four curves drawn back → front (field on top as the primary signal)
+    this._plotSegmented(p,     lo, driftSamples, 100, 0.8, 8, 4);  // dashed  — lightest, back
+    this._plotSolid(p,         lo, velSamples,   130, 1.0);         // solid thin
+    this._plotColorGradient(p, lo, colorSamples, 1.6, 3, 3);        // dotted gradient
+    this._plotSolid(p,         lo, fieldSamples, 200, 1.8);         // solid thick — front, darkest
+
+    this._drawCurvePlayhead(p, lo);
+    this._drawCurveLegend(p, lo);
 
     p.pop();
   }
 
-  // ─── resize handle hit test ────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+  //  Resize handle hit test
+  // ══════════════════════════════════════════════════════════════════════════
 
+  /**
+   * Returns true if the mouse cursor is over the graph panel's resize handle
+   * (the 2×3 dot grid in the top-left corner of the overlay).
+   * @param {object} p - p5 instance
+   * @returns {boolean}
+   */
   _isOnResizeHandle(p) {
     const sc = this._graphScale;
     const W  = Math.round(322 * sc);
@@ -1052,13 +1274,21 @@ export class FlowField {
     return Math.hypot(p.mouseX - (ox + 8 * sc), p.mouseY - (oy + 8 * sc)) < 14;
   }
 
-  // ─── debug panel ──────────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+  //  Debug panel
+  // ══════════════════════════════════════════════════════════════════════════
 
+  /**
+   * Builds and appends the debug overlay panel and the always-visible ⚙ toggle
+   * button to document.body. Wires up slider, reset, and close interactions.
+   * The panel starts hidden; call toggleDebug() to show it.
+   */
   _initDebugPanel() {
     const panel = document.createElement('div');
     panel.className = 'ff-debug';
     panel.setAttribute('aria-label', 'FlowField debug controls');
 
+    // Build rows from SLIDER_DEFS; section entries become section-header divs
     const rows = SLIDER_DEFS.map((def) => {
       if (def.section) {
         return `<div class="ff-debug__section-label">${def.section}</div>`;
@@ -1088,12 +1318,6 @@ export class FlowField {
         </div>
       </div>
       ${rows}
-      <div class="ff-debug__divider"></div>
-      <label class="ff-debug__row ff-debug__row--check">
-        <span class="ff-debug__label">Burst curves</span>
-        <input type="checkbox" class="ff-debug__check" data-param="showCurves">
-        <span class="ff-debug__value ff-debug__value--check"></span>
-      </label>
       <button class="ff-debug__reset">Reset</button>
     `;
 
@@ -1101,10 +1325,10 @@ export class FlowField {
     document.body.appendChild(panel);
     this._debugPanel = panel;
 
-    // Always-visible toggle button so the panel can be opened without keyboard
+    // Persistent ⚙ button (visible even when the panel is closed)
     const btn = document.createElement('button');
-    btn.className = 'ff-debug-toggle';
-    btn.title = 'Toggle debug panel (`)';
+    btn.className   = 'ff-debug-toggle';
+    btn.title       = 'Toggle debug panel (`)';
     btn.textContent = '⚙';
     btn.addEventListener('click', () => this.toggleDebug());
     document.body.appendChild(btn);
@@ -1113,7 +1337,8 @@ export class FlowField {
     // Close button inside the panel header
     panel.querySelector('.ff-debug__close').addEventListener('click', () => this.toggleDebug());
 
-    // Initialise value labels and wire up sliders (skip section header entries)
+    // Initialise value labels and wire live slider → param sync.
+    // Filter out section-header entries (they have no `key`).
     SLIDER_DEFS.filter(d => d.key).forEach(({ key, decimals }) => {
       const slider  = panel.querySelector(`input[data-param="${key}"]`);
       const valueEl = panel.querySelector(`[data-value="${key}"]`);
@@ -1121,48 +1346,22 @@ export class FlowField {
       valueEl.textContent = Number(this.params[key]).toFixed(decimals);
 
       slider.addEventListener('input', () => {
-        const val           = parseFloat(slider.value);
+        const val = parseFloat(slider.value);
         this.params[key]    = val;
         valueEl.textContent = val.toFixed(decimals);
       });
     });
 
-    // Burst curves checkbox
-    const cb = panel.querySelector('input[data-param="showCurves"]');
-    cb.checked = this.params.showCurves;
-    cb.addEventListener('change', () => {
-      this.params.showCurves = cb.checked;
-    });
-
-    // Reset button
+    // Reset: restore DEFAULTS, keeping showCurves in sync with current panel state
     panel.querySelector('.ff-debug__reset').addEventListener('click', () => {
       Object.assign(this.params, DEFAULTS);
+      this.params.showCurves = this._debugVisible;
       SLIDER_DEFS.filter(d => d.key).forEach(({ key, decimals }) => {
         const slider  = panel.querySelector(`input[data-param="${key}"]`);
         const valueEl = panel.querySelector(`[data-value="${key}"]`);
         slider.value        = this.params[key];
         valueEl.textContent = Number(this.params[key]).toFixed(decimals);
       });
-      cb.checked = DEFAULTS.showCurves;
     });
-  }
-
-  // ─── public API ───────────────────────────────────────────────────────────
-
-  toggleDebug() {
-    this._debugVisible = !this._debugVisible;
-    this._debugPanel.style.display = this._debugVisible ? 'flex' : 'none';
-  }
-
-  /**
-   * Remove the sketch and debug panel. Call when tearing down the component.
-   */
-  destroy() {
-    window.removeEventListener('keydown', this._onKey);
-    this._sketch.remove();
-    this._overlaySketch?.remove();
-    this._debugPanel?.remove();
-    this._debugToggleBtn?.remove();
-    this.particles = [];
   }
 }
