@@ -88,8 +88,10 @@ export class Particle {
     const fadeOut = Math.min((this.lifespan - this.age) / 60, 1);
     const alpha   = Math.min(fadeIn, fadeOut) * this.params.particleAlpha;
 
-    p.stroke(...this.params.particleColor, alpha);
-    p.strokeWeight(this.params.particleSize);
+    const color = this._colorOverride ?? this.params.particleColor;
+    const size  = this._sizeOverride  ?? this.params.particleSize;
+    p.stroke(...color, alpha);
+    p.strokeWeight(size);
     p.line(this.prevPos.x, this.prevPos.y, this.pos.x, this.pos.y);
   }
 

@@ -6,7 +6,7 @@
 /* --- Custom Properties (design tokens) --- */
 :root {
   /* Colours */
-  --color-bg:        #cabebe;                   /* warm dusty grey   — theme.bg     */
+  --color-bg:        #dee5e5;                   /* cool mist grey    — theme.bg     */
   --color-fg:        #281e1e;                   /* dark warm         — theme.fg     */
   --color-accent:    #a51e1e;                   /* deep red          — theme.accent */
   --color-muted:     #8c7878;                   /* muted warm grey   — theme.muted  */

@@ -128,6 +128,45 @@
   cursor: pointer;
 }
 
+/* ── section label ── */
+
+.ff-debug__section-label {
+  margin-top: 0.35rem;
+  padding-bottom: 0.15rem;
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.35;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ── divider ── */
+
+.ff-debug__divider {
+  height: 1px;
+  margin: 0.2rem 0;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ── checkbox row ── */
+
+.ff-debug__row--check {
+  grid-template-columns: 6rem auto 1fr;
+  cursor: pointer;
+}
+
+.ff-debug__check {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: #00d7b0;
+  border-radius: 2px;
+}
+
+.ff-debug__value--check {
+  /* placeholder — keeps grid alignment */
+}
+
 /* ── reset button ── */
 
 .ff-debug__reset {
