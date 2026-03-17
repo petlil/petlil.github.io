@@ -94,7 +94,7 @@ const DEFAULTS = {
   vectorAlpha:     0,        // flow-direction tick-mark opacity (0 = off)
 
   // ── click / tap burst ─────────────────────────────────────────────────────
-  repulseRadius:   180,      // explosion radius in pixels
+  repulseRadius:   115,      // explosion radius in pixels
   repulseStrength: 20,       // outward impulse magnitude
 
   // ── burst animation phases ─────────────────────────────────────────────────

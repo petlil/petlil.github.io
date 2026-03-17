@@ -8,7 +8,7 @@ const music = [
     type: 'album',
     id: 'vastness-vastness',
     title: 'Vastness Vastness',
-    description: 'A collection of works for voice and electronics.',
+    description: 'The debut release by The Temple — spiritual ambient music featuring Nathan Carter on drums and handpan, with Jack Woodbury producing.',
     cover: 'assets/audio/Vastness%20Vastness/Vastness%20Vastness%20cover.jpg',
     tracks: [
       { title: 'Vastness Vastness', file: 'assets/audio/Vastness%20Vastness/1_Vastness%20Vastness.mp3' },
@@ -26,7 +26,7 @@ const music = [
     type: 'album',
     id: 'unfathomed-waters',
     title: 'Unfathomed Waters',
-    description: 'A collaborative album with Jack Woodbury.',
+    description: 'A hallucinogenic dark ambient album written with Jack Woodbury, inspired by an H.P. Lovecraft short story about a sinking submarine.',
     cover: 'assets/audio/Unfathomed%20Waters/Unfathomed%20Waters%20Cover.jpg',
     tracks: [
       { title: 'There Came A Third Impression',                        file: 'assets/audio/Unfathomed%20Waters/01%20There%20Came%20A%20Third%20Impression.mp3' },
@@ -43,7 +43,7 @@ const music = [
     type: 'album',
     id: 'bostrom-scenario',
     title: 'The Bostrom Scenario',
-    description: 'Original motion picture soundtrack.',
+    description: 'Soundtrack to a mind-bending sci-fi thriller noir by director Ricky Townsend, set and filmed in Christchurch, NZ.',
     cover: 'assets/audio/The%20Bostrom%20Scenario/Bostrom%20Scenario%20Album%20Cover.png',
     tracks: [
       { title: 'The Conspiracy',               file: 'assets/audio/The%20Bostrom%20Scenario/1_The_Conspiracy.mp3' },
