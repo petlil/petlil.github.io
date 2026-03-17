@@ -21,6 +21,7 @@
 
 import { Particle } from './Particle.js';
 import { theme }    from '../core/theme.js';
+import { Router }   from '../core/Router.js';
 
 // ─── module constants ──────────────────────────────────────────────────────
 
@@ -597,11 +598,13 @@ export class FlowField {
     this._hoverRect = rect;
   }
 
-  /** Show or hide the debug panel. The burst-curve graph follows panel visibility. */
+  /** Show or hide the debug panel. The burst-curve graph follows panel visibility.
+   *  Opening the panel also closes any active section so they don't overlap. */
   toggleDebug() {
     this._debugVisible = !this._debugVisible;
     this._debugPanel.style.display = this._debugVisible ? 'flex' : 'none';
     this.params.showCurves = this._debugVisible;
+    if (this._debugVisible && Router.current()) Router.navigate('');
   }
 
   /**
