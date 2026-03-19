@@ -80,15 +80,18 @@ document.addEventListener('DOMContentLoaded', () => {
   // 8c. Swipe right on the panel to close it (or dismiss an open lightbox)
   let swipeTouchStartX = 0;
   let swipeTouchStartY = 0;
+  let swipeTouchTarget = null;
   document.addEventListener('touchstart', (e) => {
     swipeTouchStartX = e.touches[0].clientX;
     swipeTouchStartY = e.touches[0].clientY;
+    swipeTouchTarget  = e.target;
   }, { passive: true });
   document.addEventListener('touchend', (e) => {
     const dx = e.changedTouches[0].clientX - swipeTouchStartX;
     const dy = e.changedTouches[0].clientY - swipeTouchStartY;
     const isRightSwipe = dx > 60 && Math.abs(dx) > Math.abs(dy);
     if (!isRightSwipe) return;
+    if (swipeTouchTarget?.closest('.card__gallery')) return;
     if (isLightboxOpen()) {
       closeLightbox();
     } else if (Router.current()) {

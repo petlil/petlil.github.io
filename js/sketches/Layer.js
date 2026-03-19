@@ -1,78 +1,121 @@
 /**
  * Layer.js
  *
- * A managed p5 canvas with multiple named draw passes.
+ * A managed canvas with multiple named draw passes. Native browser APIs only —
+ * no p5.js dependency.
  *
- * Each Layer owns one p5 instance (and therefore one <canvas> element).
+ * Each Layer owns one <canvas> element and one requestAnimationFrame loop.
  * Draw passes are registered by name and execute in insertion order every frame.
- * This makes it easy to assign rendering responsibilities to specific layers,
- * reorder them, or move them between layers without touching the p5 boilerplate.
  *
  * Usage:
  *   const layer = new Layer(containerEl, { clear: true, overlay: true });
- *   layer.add('particles', (p) => { ... });  // registered draw pass
- *   layer.add('hud',       (p) => { ... });  // runs after 'particles' each frame
- *   layer.remove('hud');                      // remove a pass
- *   layer.p.mousePressed = (e) => { ... };   // attach p5 event handlers directly
- *   layer.destroy();                          // remove canvas + stop loop
+ *   layer.add('particles', ({ ctx, width, height, frameCount }) => { ... });
+ *   layer.add('hud',       ({ ctx, width, height, frameCount }) => { ... });
+ *   layer.remove('hud');
+ *   layer.canvas.addEventListener('mousedown', handler);
+ *   layer.destroy();
  *
  * Options:
- *   clear    {boolean} — call p.clear() each frame (transparent layer, no trail accumulation)
- *   overlay  {boolean} — position absolute over the previous canvas; pointer-events: none
- *   onSetup  {function(p)} — called once after canvas creation, inside p5's setup()
- *   onResize {function(p)} — called after canvas resize, inside p5's windowResized()
+ *   clear    {boolean}  — clearRect each frame (transparent layer, no trail accumulation)
+ *   overlay  {boolean}  — position absolute over the previous canvas; pointer-events: none
+ *   onSetup  {function} — ({ ctx, width, height }) called once after canvas creation
+ *   onResize {function} — ({ ctx, width, height }) called after resize
  */
 
 export class Layer {
   /**
    * @param {HTMLElement} containerEl
-   * @param {object}      [opts]
-   * @param {boolean}     [opts.clear=false]   - clear canvas each frame (transparent)
-   * @param {boolean}     [opts.overlay=false] - position absolute, pointer-events none
-   * @param {function}    [opts.onSetup]       - (p) => void, runs after canvas creation
-   * @param {function}    [opts.onResize]      - (p) => void, runs after canvas resize
+   * @param {object}   [opts]
+   * @param {boolean}  [opts.clear=false]   - clearRect each frame
+   * @param {boolean}  [opts.overlay=false] - absolute position, no pointer events
+   * @param {function} [opts.onSetup]       - ({ ctx, width, height }) => void
+   * @param {function} [opts.onResize]      - ({ ctx, width, height }) => void
    */
   constructor(containerEl, { clear = false, overlay = false, onSetup = null, onResize = null } = {}) {
     this._clear   = clear;
-    this._drawFns = new Map();  // name → (p) => void, executes in insertion order
+    this._drawFns = new Map();
+    this._animId  = null;
+    this._frameCount = 0;
 
-    // p5 is loaded globally via CDN — no import needed.
-    // eslint-disable-next-line no-undef
-    this.sketch = new p5((p) => {
+    // ── canvas setup ──────────────────────────────────────────────────────
+    const canvas = document.createElement('canvas');
+    canvas.style.display = 'block';
+    if (overlay) {
+      canvas.style.position      = 'absolute';
+      canvas.style.top           = '0';
+      canvas.style.left          = '0';
+      canvas.style.pointerEvents = 'none';
+    }
+    containerEl.appendChild(canvas);
+    this._canvas = canvas;
+    this._ctx    = canvas.getContext('2d');
 
-      p.setup = () => {
-        const cnv = p.createCanvas(p.windowWidth, p.windowHeight);
-        cnv.style('display', 'block');
-        if (overlay) {
-          cnv.style('position',       'absolute');
-          cnv.style('top',            '0');
-          cnv.style('left',           '0');
-          cnv.style('pointer-events', 'none');
-        }
-        if (clear) p.clear();
-        if (onSetup) onSetup(p);
-      };
+    // Size to window and apply DPR scaling
+    this._resize();
 
-      p.draw = () => {
-        if (this._clear) p.clear();
-        for (const fn of this._drawFns.values()) fn(p);
-      };
+    // onSetup callback — runs once with the initial context + dimensions
+    if (onSetup) {
+      const { w, h } = this._logicalSize();
+      onSetup({ ctx: this._ctx, width: w, height: h });
+    }
 
-      p.windowResized = () => {
-        p.resizeCanvas(p.windowWidth, p.windowHeight);
-        if (this._clear) p.clear();
-        if (onResize) onResize(p);
-      };
+    // ── resize handling ───────────────────────────────────────────────────
+    this._onResize = () => {
+      this._resize();
+      if (onResize) {
+        const { w, h } = this._logicalSize();
+        onResize({ ctx: this._ctx, width: w, height: h });
+      }
+    };
+    window.addEventListener('resize', this._onResize);
 
-    }, containerEl);
+    // ── start RAF loop ────────────────────────────────────────────────────
+    this._loop();
   }
 
+  // ── private ──────────────────────────────────────────────────────────────
+
+  /** Logical (CSS pixel) dimensions of the window */
+  _logicalSize() {
+    return { w: window.innerWidth, h: window.innerHeight };
+  }
+
+  /** Resize canvas to current window size, scaled by devicePixelRatio. */
+  _resize() {
+    const dpr = window.devicePixelRatio || 1;
+    const { w, h } = this._logicalSize();
+
+    this._canvas.width        = w * dpr;
+    this._canvas.height       = h * dpr;
+    this._canvas.style.width  = `${w}px`;
+    this._canvas.style.height = `${h}px`;
+
+    // Re-apply DPR scale after each resize (canvas reset clears transform)
+    this._ctx.scale(dpr, dpr);
+  }
+
+  _loop() {
+    this._animId = requestAnimationFrame(() => this._loop());
+
+    const { w, h } = this._logicalSize();
+
+    if (this._clear) this._ctx.clearRect(0, 0, w, h);
+
+    for (const fn of this._drawFns.values()) {
+      fn({ ctx: this._ctx, width: w, height: h, frameCount: this._frameCount });
+    }
+
+    this._frameCount++;
+  }
+
+  // ── public API ───────────────────────────────────────────────────────────
+
   /**
-   * Register a named draw pass. Passes run in insertion order each frame.
-   * If a pass with this name already exists it is replaced in-place (preserving order).
-   * @param {string}   id - unique name for this pass
-   * @param {function} fn - (p: p5) => void
-   * @returns {this} for chaining
+   * Register a named draw pass. Passes execute in insertion order each frame.
+   * If a pass with this name already exists it is replaced in-place.
+   * @param {string}   id - unique pass name
+   * @param {function} fn - ({ ctx, width, height, frameCount }) => void
+   * @returns {this}
    */
   add(id, fn) {
     this._drawFns.set(id, fn);
@@ -80,23 +123,22 @@ export class Layer {
   }
 
   /**
-   * Remove a named draw pass. No-op if the id doesn't exist.
+   * Remove a named draw pass. No-op if id doesn't exist.
    * @param {string} id
-   * @returns {this} for chaining
+   * @returns {this}
    */
   remove(id) {
     this._drawFns.delete(id);
     return this;
   }
 
-  /**
-   * The underlying p5 instance.
-   * Use this to attach event handlers (mousePressed, touchStarted, etc.)
-   * or access p5 utilities (p.noise, p.createVector, p.drawingContext, …).
-   * @returns {object} p5 instance
-   */
-  get p() { return this.sketch; }
+  /** The raw HTMLCanvasElement — attach event listeners here directly. */
+  get canvas() { return this._canvas; }
 
-  /** Remove the canvas element and stop the draw loop. */
-  destroy() { this.sketch.remove(); }
+  /** Stop the RAF loop and remove the canvas element. */
+  destroy() {
+    if (this._animId !== null) cancelAnimationFrame(this._animId);
+    window.removeEventListener('resize', this._onResize);
+    this._canvas.remove();
+  }
 }

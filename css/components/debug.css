@@ -222,3 +222,18 @@
   border-color: rgba(255, 255, 255, 0.35);
   background: rgba(0, 0, 0, 0.7);
 }
+
+/* ── fps counter ── */
+
+.ff-fps {
+  position: fixed;
+  bottom: 1.25rem;
+  left: 1.25rem;
+  z-index: 9999;
+
+  font-family: 'Courier New', monospace;
+  font-size: 0.7rem;
+  color: rgba(40, 30, 30, 0.4);
+  pointer-events: none;
+  user-select: none;
+}
