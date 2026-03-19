@@ -2,9 +2,9 @@
  * FlowField.js
  *
  * Full-screen Perlin noise flow field with particle animation.
- * Wraps two p5.js instances (instance mode):
- *   • Main canvas    — background fade, particle physics, rendering
- *   • Overlay canvas — burst-curve debug graph (transparent, no trail fade)
+ * Wraps two canvas Layers (each backed by a p5.js instance in instance mode):
+ *   • Main layer    — background fade, particle physics, normal particle rendering
+ *   • Overlay layer — burst shapes + debug graph (transparent, clears each frame)
  *
  * Usage:
  *   const ff = new FlowField(document.querySelector('#bg'));
@@ -20,7 +20,9 @@
  */
 
 import { Particle } from './Particle.js';
+import { Layer }    from './Layer.js';
 import { theme }    from '../core/theme.js';
+import { Router }   from '../core/Router.js';
 
 // ─── module constants ──────────────────────────────────────────────────────
 
@@ -35,11 +37,23 @@ const BG = theme.bg;
 const BURST_COLOR = [220, 65, 45];
 
 /**
- * Gold fill colour for star-shaped burst particles.
- * Lerps toward particleColor as the star shrinks back.
- * @type {[number, number, number]}
+ * Shape cycle — each tap advances through this list in order.
+ * All particles from one tap share the same shape; prior bursts keep theirs.
+ * ♪ is coloured by the burst colour; emoji (🎷) render in their native OS colour.
  */
-const STAR_COLOR = [255, 195, 50];
+const BURST_SHAPES = ['star', 'triangle', 'eighth', 'heart', 'saxophone', 'spiral'];
+
+/**
+ * Colour palette for burst shapes — cycles through one colour per tap.
+ * All particles from a single tap share the same snapshotted colour.
+ */
+const BURST_PALETTE = [
+  [ 58,  82, 158],  // dark slate blue
+  [ 72, 130, 228],  // bright cornflower
+  [172,  18, 208],  // vivid magenta
+  [108,  12, 198],  // deep royal purple
+  [152, 148, 212],  // soft lavender
+];
 
 // ─── easing helpers ────────────────────────────────────────────────────────
 
@@ -101,12 +115,12 @@ const DEFAULTS = {
   //   BURST  (burstDur  frames) — outward blast; strong drag; flow field off
   //   FLOAT  (floatDur  frames) — momentum carries; gentle drift; field barely on
   //   RETURN (returnDur frames) — flow field eases back to full strength
-  burstDur:        22,       // short so float begins while still decelerating
-  floatDur:        80,
+  burstDur:        5,
+  floatDur:        45,
   returnDur:       120,
-  burstDrag:       0.92,     // base drag during burst (ramps to +0.06 by end)
-  floatDrag:       0.96,     // base drag during float (ramps to +0.03 via smoothstep)
-  driftStrength:   0.10,     // peak downward force during float phase
+  burstDrag:       0.98,     // base drag during burst (ramps to +0.06 by end)
+  floatDrag:       0.925,    // base drag during float (ramps to +0.03 via smoothstep)
+  driftStrength:   0.00,     // peak downward force during float phase
 
   // ── internal / debug ──────────────────────────────────────────────────────
   showCurves:      false,    // controlled by panel visibility; not exposed as a slider
@@ -137,13 +151,15 @@ export class FlowField {
     // ── private state ──────────────────────────────────────────────────────
     this._t              = 0;      // Perlin noise time offset (advances each frame)
     this._frame          = 0;      // global frame counter
-    this._sketch         = null;   // main p5 instance
-    this._overlaySketch  = null;   // curve-graph p5 instance (transparent canvas)
+    this._mainLayer      = null;   // main canvas layer (background, physics, normal particles)
+    this._overlayLayer   = null;   // transparent overlay layer (burst shapes, curve graph)
     this._debugPanel     = null;   // debug panel DOM element
     this._debugToggleBtn = null;   // always-visible ⚙ button
     this._debugVisible   = false;
     this._hoverRect      = null;   // DOMRect of hovered nav item (orbit attractor)
     this._latestBurstAt  = -9999;  // _frame value when last burst fired (drives playhead)
+    this._shapeIndex     = 0;      // cycles through BURST_SHAPES on each tap
+    this._colorIndex     = 0;      // cycles through BURST_PALETTE on each tap
 
     // ── debug curve graph ──────────────────────────────────────────────────
     this._curveSamples    = null;  // cached Float32Arrays; rebuilt on param change
@@ -207,7 +223,7 @@ export class FlowField {
         ffWeight : 0.04,
         drag     : floatDrag + smoothstep(t) * 0.03,
         drift    : driftStrength * Math.sin(t * Math.PI * 0.85 + Math.PI * 0.15),
-        colorT   : smoothstep(t) * 0.35,
+        colorT   : 0,  // hold burst colour through entire float phase
       };
     }
 
@@ -219,7 +235,7 @@ export class FlowField {
       ffWeight : 0.04 + ss * 0.96,
       drag     : 1.0,
       drift    : 0,
-      colorT   : 0.35 + ss * ss * 0.65,  // accelerates toward teal near the end
+      colorT   : ss * ss,  // full fade happens during return only; accelerates toward end
     };
   }
 
@@ -240,6 +256,13 @@ export class FlowField {
     const S = this.params.repulseStrength;
     if (S <= 0) return;
 
+    // Advance the global shape + colour cycles independently — all particles from
+    // this tap share the same shape and colour; prior bursts keep their snapshots.
+    const shape      = BURST_SHAPES[this._shapeIndex % BURST_SHAPES.length];
+    const burstColor = BURST_PALETTE[this._colorIndex % BURST_PALETTE.length];
+    this._shapeIndex++;
+    this._colorIndex++;
+
     for (const pt of this.particles) {
       const dx   = pt.pos.x - cx;
       const dy   = pt.pos.y - cy;
@@ -257,27 +280,34 @@ export class FlowField {
       const rx   = ux * cosA - uy * sinA;      // rotated outward direction
       const ry   = ux * sinA + uy * cosA;
 
-      // Impulse falls off linearly with distance; replace velocity (not additive)
+      // Impulse falls off linearly with distance; replace velocity (not additive).
+      // Applied to ALL in-range particles so they're physically pushed regardless.
       const speed  = S * (1 - dist / R) * strengthMult;
       pt.vel.x     = rx * speed;
       pt.vel.y     = ry * speed;
       pt.acc.set(0, 0);  // discard any pending forces
 
+      // Only start a new shape animation if the particle has fully returned —
+      // prevents mid-animation particles from being re-burst into a new shape.
+      if (pt.burstState) continue;
+
       // Snapshot: lock orientation + freeze durations so mid-burst slider
       // changes don't glitch the star animation or colour transition.
       pt.burstState = {
-        frame    : 0,
-        heading  : Math.atan2(ry, rx),       // star points toward launch direction
-        burstDur : this.params.burstDur,
-        floatDur : this.params.floatDur,
-        returnDur: this.params.returnDur,
+        frame      : 0,
+        heading    : Math.atan2(ry, rx),  // shape oriented toward launch direction
+        shape,                             // frozen at burst time; cycle advances per tap
+        burstColor,                        // colour snapshotted at burst time
+        burstDur   : this.params.burstDur,
+        floatDur   : this.params.floatDur,
+        returnDur  : this.params.returnDur,
       };
     }
     this._latestBurstAt = this._frame;
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  //  Star rendering
+  //  Burst shape rendering
   // ══════════════════════════════════════════════════════════════════════════
 
   /**
@@ -295,293 +325,404 @@ export class FlowField {
   _starColorT(frame, bs) {
     const floatEnd = bs.burstDur + bs.floatDur;
     if (frame < bs.burstDur) return 0;
-    if (frame < floatEnd) {
-      return smoothstep((frame - bs.burstDur) / bs.floatDur) * 0.35;
-    }
+    if (frame < floatEnd) return 0;  // hold burst colour through entire float phase
     const ss = smoothstep((frame - floatEnd) / bs.returnDur);
-    return 0.35 + ss * ss * 0.65;
+    return ss * ss;  // full fade during return only; accelerates toward end
   }
 
   /**
-   * Draws a 5-pointed star at pt.pos, oriented and coloured by burst state.
+   * Draws the burst shape for a particle, dispatching to the appropriate
+   * shape renderer based on pt.burstState.shape.
    *
-   * Shape lifecycle:
-   *   BURST phase  — expands from a tiny gold circle (never invisible at frame 0)
-   *                  to a full star; inner radius morphs from R → 0.4·R
-   *   POST-BURST   — shrinks continuously; inner radius morphs back toward R
-   *                  during return phase (star → circle → dot)
+   * All shapes share the same lifecycle:
+   *   BURST  — expands from a small visible size (never invisible at frame 0) to maxR
+   *   POST   — shrinks continuously; shape-specific forms morph back toward dots
    *
-   * Colour transitions from STAR_COLOR (gold) → particleColor (teal) via _starColorT.
-   * Orientation is locked to the heading captured at burst time — no velocity tracking.
+   * Uses the native Canvas 2D API (p.drawingContext) directly rather than p5
+   * wrappers. This avoids the cost of p5's push()/pop() state copies,
+   * beginShape()/vertex()/endShape() overhead, and textSize() font re-parsing —
+   * all of which compound badly when dozens of burst particles animate at once.
    *
-   * @param {object}   p  - p5 instance
-   * @param {Particle} pt - particle with a valid burstState
+   * @param {CanvasRenderingContext2D} ctx - native 2D context from p.drawingContext
+   * @param {Particle}                pt  - particle with a valid burstState
    */
-  _drawStar(p, pt) {
+  _drawBurstShape(ctx, pt) {
     const bs       = pt.burstState;
     const frame    = bs.frame;
     const floatEnd = bs.burstDur + bs.floatDur;
     const totalDur = floatEnd + bs.returnDur;
+    const size     = pt._sizeOverride ?? this.params.particleSize;
+    const maxR     = size * 4;  // peak radius at end of burst phase
 
-    const size = pt._sizeOverride ?? this.params.particleSize;
-    const maxR = size * 4;  // peak outer radius at end of burst phase
-
-    // ── outer (R) and inner (ri) radii ────────────────────────────────────
-    let R, ri;
-
+    // ── outer radius and expand/morph progress ────────────────────────────
+    // expandT: 0→1 during burst, stays 1 after.
+    // R: grows from a small-but-visible minR to maxR, then shrinks 90%.
+    let R, expandT;
     if (frame < bs.burstDur) {
-      // Expand: tiny visible circle at frame 0 → full star by burst end
-      const t    = smoothstep(frame / bs.burstDur);
-      const minR = size * 1.5;              // starting radius — small but visible
-      R  = lerp(minR, maxR, t);
-      ri = R * lerp(1.0, 0.4, t);           // circle (ri = R) → star (ri = 0.4·R)
+      expandT = smoothstep(frame / bs.burstDur);
+      R       = lerp(size * 1.5, maxR, expandT);
     } else {
-      // Shrink: continuous from burst end through float and return
-      const t = smoothstep((frame - bs.burstDur) / (totalDur - bs.burstDur));
-      R  = maxR * (1 - t * 0.9);
-      // During return phase, morph inner radius back toward R (star → circle)
-      const morphT = frame > floatEnd
-        ? smoothstep((frame - floatEnd) / bs.returnDur)
-        : 0;
-      ri = R * lerp(0.4, 1.0, morphT);
+      expandT       = 1;
+      const shrinkT = smoothstep((frame - bs.burstDur) / (totalDur - bs.burstDur));
+      R             = maxR * (1 - shrinkT * 0.9);
     }
 
-    // ── colour — gold → teal ──────────────────────────────────────────────
-    const colorT    = this._starColorT(frame, bs);
-    const nc        = this.params.particleColor;
-    const drawColor = [
-      Math.round(lerp(STAR_COLOR[0], nc[0], colorT)),
-      Math.round(lerp(STAR_COLOR[1], nc[1], colorT)),
-      Math.round(lerp(STAR_COLOR[2], nc[2], colorT)),
-    ];
+    // returnMorphT: 0 during burst+float, 0→1 during return.
+    // Drives the star inner-radius morph (star → circle) and similar effects.
+    const returnMorphT = frame > floatEnd
+      ? smoothstep((frame - floatEnd) / bs.returnDur)
+      : 0;
+
+    // ── colour — random burst colour → teal ──────────────────────────────
+    const colorT = this._starColorT(frame, bs);
+    const nc     = this.params.particleColor;
+    const bc     = bs.burstColor;
+    const cr     = Math.round(lerp(bc[0], nc[0], colorT));
+    const cg     = Math.round(lerp(bc[1], nc[1], colorT));
+    const cb     = Math.round(lerp(bc[2], nc[2], colorT));
 
     // ── alpha — mirrors Particle.draw() fade envelope ─────────────────────
     const fadeIn  = Math.min(pt.age / 60, 1);
     const fadeOut = Math.min((pt.lifespan - pt.age) / 60, 1);
     const alpha   = Math.min(fadeIn, fadeOut) * this.params.particleAlpha;
 
-    // ── draw — locked orientation from burst snapshot ─────────────────────
-    p.push();
-    p.translate(pt.pos.x, pt.pos.y);
-    p.rotate(bs.heading);
-    p.fill(...drawColor, alpha * 0.7);
-    p.stroke(...drawColor, alpha);
-    p.strokeWeight(0.5);
-    p.beginShape();
+    if (alpha < 2) return;  // skip nearly-invisible shapes — free performance win
+
+    // ── draw via native canvas API ────────────────────────────────────────
+    // Fill is semi-transparent; stroke is fully opaque at the current alpha.
+    const fillStyle   = `rgba(${cr},${cg},${cb},${(alpha * 0.7 / 255).toFixed(3)})`;
+    const strokeStyle = `rgba(${cr},${cg},${cb},${(alpha / 255).toFixed(3)})`;
+
+    ctx.save();
+    ctx.translate(pt.pos.x, pt.pos.y);
+    ctx.rotate(bs.heading);
+
+    switch (bs.shape) {
+      case 'star':
+        ctx.fillStyle   = fillStyle;
+        ctx.strokeStyle = strokeStyle;
+        ctx.lineWidth   = 0.5;
+        this._shapeStar(ctx, R, expandT, returnMorphT);
+        break;
+      case 'triangle':
+        ctx.fillStyle   = fillStyle;
+        ctx.strokeStyle = strokeStyle;
+        ctx.lineWidth   = 0.5;
+        this._shapeTriangle(ctx, R);
+        break;
+      case 'eighth':
+        ctx.fillStyle = fillStyle;
+        this._shapeGlyph(ctx, '♪', R * 2.2);
+        break;
+      case 'heart':
+        ctx.fillStyle   = fillStyle;
+        ctx.strokeStyle = strokeStyle;
+        ctx.lineWidth   = 0.5;
+        this._shapeHeart(ctx, R);
+        break;
+      case 'saxophone':
+        ctx.fillStyle = fillStyle;
+        this._shapeGlyph(ctx, '🎷', R * 1.45);  // saxophones slightly larger than other shapes
+        break;
+      case 'spiral':
+        ctx.strokeStyle = strokeStyle;
+        ctx.lineWidth   = 1.5;
+        this._shapeSpiral(ctx, R);
+        break;
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * 5-pointed star via native canvas paths.
+   * Inner radius morphs circle→star on expand, star→circle on return.
+   *
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} R            - outer radius
+   * @param {number} expandT      - 0→1 during burst expand, 1 once fully formed
+   * @param {number} returnMorphT - 0→1 during return phase
+   */
+  _shapeStar(ctx, R, expandT, returnMorphT) {
+    const starRatio = expandT < 1
+      ? lerp(1.0, 0.4, expandT)       // expanding: circle → star
+      : lerp(0.4, 1.0, returnMorphT); // shrinking: star → circle
+    const ri = R * starRatio;
+    ctx.beginPath();
     for (let i = 0; i < 10; i++) {
       const a   = (i * Math.PI) / 5;
       const rad = i % 2 === 0 ? R : ri;
-      p.vertex(Math.cos(a) * rad, Math.sin(a) * rad);
+      if (i === 0) ctx.moveTo(Math.cos(a) * rad, Math.sin(a) * rad);
+      else         ctx.lineTo(Math.cos(a) * rad, Math.sin(a) * rad);
     }
-    p.endShape(p.CLOSE);
-    p.pop();
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  /**
+   * Equilateral triangle, point oriented along the burst heading.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} R - circumradius
+   */
+  _shapeTriangle(ctx, R) {
+    ctx.beginPath();
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI * 2 - Math.PI / 2;  // top vertex first
+      if (i === 0) ctx.moveTo(Math.cos(a) * R, Math.sin(a) * R);
+      else         ctx.lineTo(Math.cos(a) * R, Math.sin(a) * R);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  /**
+   * Parametric heart shape via the standard trig parameterisation.
+   * y is negated because canvas y increases downward.
+   * 30 steps is enough for a smooth curve at these sizes.
+   *
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} R - approximate outer radius (maps to 16 units in the formula)
+   */
+  _shapeHeart(ctx, R) {
+    const scale = R / 16;
+    ctx.beginPath();
+    for (let i = 0; i <= 30; i++) {
+      const t = (i / 30) * Math.PI * 2;
+      const x =  16 * Math.pow(Math.sin(t), 3) * scale;
+      const y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * scale;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  /**
+   * Archimedean spiral: r(θ) grows from 0 to R over `turns` rotations.
+   * Rendered as an open polyline — no fill. 40 steps is visually smooth.
+   *
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} R - outer radius at the tip of the spiral
+   */
+  _shapeSpiral(ctx, R) {
+    const turns = 2.5;
+    const steps = 40;
+    ctx.beginPath();
+    for (let i = 0; i <= steps; i++) {
+      const t     = i / steps;
+      const angle = t * turns * Math.PI * 2;
+      const r     = t * R;
+      if (i === 0) ctx.moveTo(Math.cos(angle) * r, Math.sin(angle) * r);
+      else         ctx.lineTo(Math.cos(angle) * r, Math.sin(angle) * r);
+    }
+    ctx.stroke();  // open path — no closePath/fill
+  }
+
+  /**
+   * Single Unicode glyph or emoji, centred at origin, sized to ~2R diameter.
+   * fillStyle must be set by the caller before this is invoked.
+   *
+   * Font size is rounded to the nearest even pixel so nearby particles share
+   * the same compiled font string — the browser caches fonts per unique string,
+   * so coarser quantisation means more cache hits and fewer re-parses per frame.
+   *
+   * ♪ is coloured by fillStyle; emoji (🎷 🎵) render in native OS colour
+   * regardless of fillStyle, but globalAlpha (set via rgba fillStyle) still fades them.
+   *
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {string} glyph - character to render
+   * @param {number} R     - half the desired glyph height in pixels
+   */
+  _shapeGlyph(ctx, glyph, R) {
+    ctx.font         = `${Math.round(R) * 2}px sans-serif`;
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(glyph, 0, 0);
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  //  p5 sketch — main canvas
+  //  Canvas layers
   // ══════════════════════════════════════════════════════════════════════════
 
   _initSketch() {
-    this._sketch = new p5((p) => {
-
-      // ── setup ─────────────────────────────────────────────────────────────
-      p.setup = () => {
-        const cnv = p.createCanvas(p.windowWidth, p.windowHeight);
-        cnv.style('display', 'block');
+    this._mainLayer = new Layer(this.container, {
+      onSetup: (p) => {
         p.background(...BG);
-
         for (let i = 0; i < this.params.particleCount; i++) {
           this.particles.push(new Particle(p, this.params));
         }
-      };
+      },
+      onResize: (p) => p.background(...BG),
+    });
 
-      // ── draw loop ─────────────────────────────────────────────────────────
-      p.draw = () => {
-        // Semi-transparent fill over the whole canvas creates motion trails.
-        // trailAlpha controls trail length: lower = longer trails.
-        p.noStroke();
-        p.fill(...BG, this.params.trailAlpha);
-        p.rect(0, 0, p.width, p.height);
+    // ── background fade ────────────────────────────────────────────────────
+    // Semi-transparent fill each frame creates motion trails.
+    // trailAlpha controls trail length: lower = longer trails.
+    this._mainLayer.add('background', (p) => {
+      p.noStroke();
+      p.fill(...BG, this.params.trailAlpha);
+      p.rect(0, 0, p.width, p.height);
+    });
 
-        this._t += this.params.noiseSpeed;
-        this._frame++;
+    // ── optional debug overlays (alpha 0 by default — invisible) ──────────
+    this._mainLayer.add('debug', (p) => {
+      if (this.params.vectorAlpha  > 0) this._drawVectors(p);
+      if (this.params.contourAlpha > 0) this._drawContours(p);
+    });
 
-        // Optional debug overlays (normally invisible — alpha 0 by default)
-        if (this.params.vectorAlpha  > 0) this._drawVectors(p);
-        if (this.params.contourAlpha > 0) this._drawContours(p);
+    // ── particle physics + normal particle draw ────────────────────────────
+    // Burst shapes are NOT drawn here — they live on the overlay layer so
+    // they clear every frame and never accumulate trail-fade artefacts.
+    this._mainLayer.add('particles', (p) => {
+      this._t += this.params.noiseSpeed;
+      this._frame++;
 
-        // Maintain particle count live so the slider takes effect immediately
-        while (this.particles.length < this.params.particleCount) {
-          this.particles.push(new Particle(p, this.params));
-        }
-        while (this.particles.length > this.params.particleCount) {
-          this.particles.pop();
-        }
+      // Maintain particle count live so the slider takes effect immediately
+      while (this.particles.length < this.params.particleCount) {
+        this.particles.push(new Particle(p, this.params));
+      }
+      while (this.particles.length > this.params.particleCount) {
+        this.particles.pop();
+      }
 
-        // ── per-particle update + draw ──────────────────────────────────────
-        for (let i = 0; i < this.particles.length; i++) {
-          const pt = this.particles[i];
+      for (let i = 0; i < this.particles.length; i++) {
+        const pt = this.particles[i];
 
-          // Flow-field vector at this particle's position.
-          // Computed unconditionally — burst particles use it at reduced weight.
-          const nx    = pt.pos.x * this.params.noiseScale;
-          const ny    = pt.pos.y * this.params.noiseScale;
-          const angle = p.noise(nx, ny, this._t) * p.TWO_PI * 2;
-          const ffx   = Math.cos(angle) * 0.8;
-          const ffy   = Math.sin(angle) * 0.8;
+        // Flow-field vector at this particle's position.
+        // Computed unconditionally — burst particles use it at reduced weight.
+        const nx    = pt.pos.x * this.params.noiseScale;
+        const ny    = pt.pos.y * this.params.noiseScale;
+        const angle = p.noise(nx, ny, this._t) * p.TWO_PI * 2;
+        const ffx   = Math.cos(angle) * 0.8;
+        const ffy   = Math.sin(angle) * 0.8;
 
-          if (pt.burstState) {
-            // ── burst path ────────────────────────────────────────────────
-            const phys = this._burstPhysics(pt.burstState.frame);
+        if (pt.burstState) {
+          // ── burst path ────────────────────────────────────────────────
+          const phys = this._burstPhysics(pt.burstState.frame);
 
-            if (!phys) {
-              // Burst fully complete — clear state, fall through to normal physics
-              pt.burstState     = null;
-              pt._colorOverride = undefined;
-              pt._sizeOverride  = undefined;
-
-            } else {
-              const { phase, ffWeight, drag, drift, colorT } = phys;
-
-              // Trail tint: BURST_COLOR (red) at impact, lerps back to teal
-              const nc = this.params.particleColor;
-              pt._colorOverride = [
-                Math.round(lerp(BURST_COLOR[0], nc[0], colorT)),
-                Math.round(lerp(BURST_COLOR[1], nc[1], colorT)),
-                Math.round(lerp(BURST_COLOR[2], nc[2], colorT)),
-              ];
-              // Size: enlarged at impact, returns to normal as colorT approaches 1
-              pt._sizeOverride = lerp(this.params.particleSize * 2.5, this.params.particleSize, colorT);
-
-              // Partial flow-field influence (0 during burst, grows during float)
-              if (ffWeight > 0) pt.applyForce(p.createVector(ffx * ffWeight, ffy * ffWeight));
-
-              // Downward drift during float phase
-              if (drift > 0) pt.applyForce(p.createVector(0, drift));
-
-              // Apply drag coefficient directly to velocity before positional update
-              pt.vel.x *= drag;
-              pt.vel.y *= drag;
-
-              if (phase === 'burst') {
-                // Bypass vel.limit() so the initial outburst isn't capped.
-                // By burst end, drag has reduced velocity below particleSpeed,
-                // so normal limiting is safe from float phase onward.
-                pt.prevPos.set(pt.pos);
-                pt.vel.add(pt.acc);
-                pt.pos.add(pt.vel);
-                pt.acc.set(0, 0);
-                pt.age++;
-                pt._wrapEdges();
-              } else {
-                pt.update();  // uses vel.limit(particleSpeed)
-              }
-
-              pt.burstState.frame++;
-            }
-          }
-
-          // ── normal physics ─────────────────────────────────────────────────
-          // Runs for non-burst particles, and also on the frame a burst completes
-          // (burstState was just set to null above; this executes on the same frame).
-          if (!pt.burstState) {
-            pt.applyForce(p.createVector(ffx, ffy));
-            const orb = this._orbit(p, pt.pos.x, pt.pos.y);
-            if (orb) pt.applyForce(orb);
-            pt.update();
-          }
-
-          // ── draw ──────────────────────────────────────────────────────────
-          if (pt.burstState) {
-            this._drawStar(p, pt);  // gold star while bursting
-          } else {
-            pt.draw();              // normal teal dot
-          }
-
-          // Reset dead particles in-place — keeps pool at a constant size
-          if (pt.isDead()) {
+          if (!phys) {
+            // Burst fully complete — clear state, fall through to normal physics
             pt.burstState     = null;
             pt._colorOverride = undefined;
             pt._sizeOverride  = undefined;
-            pt.reset();
+
+          } else {
+            const { phase, ffWeight, drag, drift, colorT } = phys;
+
+            // Trail tint: BURST_COLOR (red) at impact, lerps back to teal
+            const nc = this.params.particleColor;
+            pt._colorOverride = [
+              Math.round(lerp(BURST_COLOR[0], nc[0], colorT)),
+              Math.round(lerp(BURST_COLOR[1], nc[1], colorT)),
+              Math.round(lerp(BURST_COLOR[2], nc[2], colorT)),
+            ];
+            // Size: enlarged at impact, returns to normal as colorT approaches 1
+            pt._sizeOverride = lerp(this.params.particleSize * 2.5, this.params.particleSize, colorT);
+
+            // Partial flow-field influence (0 during burst, grows during float)
+            if (ffWeight > 0) pt.applyForce(p.createVector(ffx * ffWeight, ffy * ffWeight));
+
+            // Downward drift during float phase
+            if (drift > 0) pt.applyForce(p.createVector(0, drift));
+
+            // Apply drag coefficient directly to velocity before positional update
+            pt.vel.x *= drag;
+            pt.vel.y *= drag;
+
+            if (phase === 'burst') {
+              // Bypass vel.limit() so the initial outburst isn't capped.
+              // By burst end, drag has reduced velocity below particleSpeed,
+              // so normal limiting is safe from float phase onward.
+              pt.prevPos.set(pt.pos);
+              pt.vel.add(pt.acc);
+              pt.pos.add(pt.vel);
+              pt.acc.set(0, 0);
+              pt.age++;
+              pt._wrapEdges();
+            } else {
+              pt.update();  // uses vel.limit(particleSpeed)
+            }
+
+            pt.burstState.frame++;
           }
         }
-      };
 
-      // ── resize ────────────────────────────────────────────────────────────
-      p.windowResized = () => {
-        p.resizeCanvas(p.windowWidth, p.windowHeight);
-        p.background(...BG);
-      };
-
-      // ── mouse / touch ─────────────────────────────────────────────────────
-      p.mousePressed = (e) => {
-        if (e && e.target !== p.canvas) return;
-        // Graph resize handle intercepts mousedown — don't also fire a burst
-        if (this.params.showCurves && this._isOnResizeHandle(p)) {
-          this._graphDragging  = true;
-          this._dragStartX     = p.mouseX;
-          this._dragStartY     = p.mouseY;
-          this._dragStartScale = this._graphScale;
-          return false;
+        // ── normal physics ───────────────────────────────────────────────
+        // Runs for non-burst particles, and also on the frame a burst
+        // completes (burstState was just cleared above; same frame).
+        if (!pt.burstState) {
+          pt.applyForce(p.createVector(ffx, ffy));
+          const orb = this._orbit(p, pt.pos.x, pt.pos.y);
+          if (orb) pt.applyForce(orb);
+          pt.update();
+          pt.draw();  // normal teal dot; burst shapes rendered on overlay
         }
-        this._applyBurst(p, p.mouseX, p.mouseY);
+
+        // Reset dead particles in-place — keeps pool at a constant size
+        if (pt.isDead()) {
+          pt.burstState     = null;
+          pt._colorOverride = undefined;
+          pt._sizeOverride  = undefined;
+          pt.reset();
+        }
+      }
+    });
+
+    // ── mouse / touch ──────────────────────────────────────────────────────
+    const p = this._mainLayer.p;
+
+    p.mousePressed = (e) => {
+      if (e && e.target !== p.canvas) return;
+      // Graph resize handle intercepts mousedown — don't also fire a burst
+      if (this.params.showCurves && this._isOnResizeHandle(p)) {
+        this._graphDragging  = true;
+        this._dragStartX     = p.mouseX;
+        this._dragStartY     = p.mouseY;
+        this._dragStartScale = this._graphScale;
         return false;
-      };
+      }
+      this._applyBurst(p, p.mouseX, p.mouseY);
+      return false;
+    };
 
-      p.mouseDragged = () => {
-        if (!this._graphDragging) return;
-        // Drag left / up → bigger graph; drag right / down → smaller
-        const delta = (this._dragStartX - p.mouseX + this._dragStartY - p.mouseY) * 0.003;
-        this._graphScale = Math.max(0.5, Math.min(2.5, this._dragStartScale + delta));
-      };
+    p.mouseDragged = () => {
+      if (!this._graphDragging) return;
+      // Drag left / up → bigger graph; drag right / down → smaller
+      const delta = (this._dragStartX - p.mouseX + this._dragStartY - p.mouseY) * 0.003;
+      this._graphScale = Math.max(0.5, Math.min(2.5, this._dragStartScale + delta));
+    };
 
-      p.mouseReleased = () => {
-        this._graphDragging = false;
-      };
+    p.mouseReleased  = () => { this._graphDragging = false; };
 
-      p.touchStarted = (e) => {
-        if (e && e.target !== p.canvas) return;
-        if (p.touches.length > 0) this._applyBurst(p, p.touches[0].x, p.touches[0].y);
-        return false;
-      };
-
-    }, this.container);
+    p.touchStarted = (e) => {
+      if (e && e.target !== p.canvas) return;
+      if (p.touches.length > 0) this._applyBurst(p, p.touches[0].x, p.touches[0].y);
+      return false;
+    };
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  //  p5 overlay sketch — burst-curve graph (separate transparent canvas)
-  // ══════════════════════════════════════════════════════════════════════════
-
-  /**
-   * Creates a second p5 instance on a transparent canvas layered directly
-   * above the main canvas (still within #bg's stacking context, so it remains
-   * behind all nav / content / debug UI).
-   *
-   * `p.clear()` each frame keeps it free of the trail-fade artefacts that
-   * would accumulate if it shared the main canvas.
-   * `pointer-events: none` ensures clicks/taps pass through to the main canvas.
-   */
   _initOverlaySketch() {
-    this._overlaySketch = new p5((p) => {
-      p.setup = () => {
-        const cnv = p.createCanvas(p.windowWidth, p.windowHeight);
-        cnv.style('position', 'absolute');
-        cnv.style('top', '0');
-        cnv.style('left', '0');
-        cnv.style('pointer-events', 'none');
-        p.clear();
-      };
+    // Transparent overlay — clears every frame so nothing accumulates.
+    // pointer-events: none lets clicks/taps fall through to the main canvas.
+    this._overlayLayer = new Layer(this.container, { clear: true, overlay: true });
 
-      p.draw = () => {
-        p.clear();
-        if (this.params.showCurves) this._drawCurveOverlay(p);
-      };
+    // Burst shapes — rendered here so p.clear() wipes them each frame cleanly,
+    // eliminating the trail-smear that would occur on the main canvas.
+    // To move burst shapes back to the main canvas: remove this pass and
+    // re-add drawBurstShape calls inside the 'particles' pass on _mainLayer.
+    this._overlayLayer.add('burstShapes', (p) => {
+      const ctx = p.drawingContext;
+      for (const pt of this.particles) {
+        if (pt.burstState) this._drawBurstShape(ctx, pt);
+      }
+    });
 
-      p.windowResized = () => {
-        p.resizeCanvas(p.windowWidth, p.windowHeight);
-      };
-    }, this.container);
+    // Debug burst-curve graph — only visible when the settings panel is open.
+    this._overlayLayer.add('curveGraph', (p) => {
+      if (this.params.showCurves) this._drawCurveOverlay(p);
+    });
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -597,22 +738,24 @@ export class FlowField {
     this._hoverRect = rect;
   }
 
-  /** Show or hide the debug panel. The burst-curve graph follows panel visibility. */
+  /** Show or hide the debug panel. The burst-curve graph follows panel visibility.
+   *  Opening the panel also closes any active section so they don't overlap. */
   toggleDebug() {
     this._debugVisible = !this._debugVisible;
     this._debugPanel.style.display = this._debugVisible ? 'flex' : 'none';
     this.params.showCurves = this._debugVisible;
+    if (this._debugVisible && Router.current()) Router.navigate('');
   }
 
   /**
-   * Tear down both p5 instances, the debug panel, and all event listeners.
+   * Tear down all layers, the debug panel, and all event listeners.
    * Call this when removing the FlowField from the page.
    */
   destroy() {
     window.removeEventListener('keydown',    this._onKey);
     window.removeEventListener('hashchange', this._onHashChange);
-    this._sketch.remove();
-    this._overlaySketch?.remove();
+    this._mainLayer.destroy();
+    this._overlayLayer?.destroy();
     this._debugPanel?.remove();
     this._debugToggleBtn?.remove();
     this.particles = [];
